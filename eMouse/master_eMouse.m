@@ -4,9 +4,9 @@ fpath    = 'C:\DATA\Spikes\eMouse\'; % where on disk do you want the simulation?
 if ~exist(fpath, 'dir'); mkdir(fpath); end
 
 % This part adds paths
-addpath(genpath('D:\CODE\GitHub\copies\KiloSort')) % path to kilosort folder
-addpath(genpath('D:\CODE\GitHub\npy-matlab')) % path to npy-matlab scripts
-pathToYourConfigFile = 'D:\CODE\GitHub\copies\KiloSort\eMouse'; % for this example it's ok to leave this path inside the repo, but for your own config file you *must* put it somewhere else!  
+addpath(genpath('C:\Users\Karamanlis_Dimokrati\Documents\Repositories\KiloSort')) % path to kilosort folder
+addpath(genpath('C:\Users\Karamanlis_Dimokrati\Documents\Repositories\npy-matlab')) % path to npy-matlab scripts
+pathToYourConfigFile = 'C:\Users\Karamanlis_Dimokrati\Documents\Repositories\KiloSort\eMouse'; % for this example it's ok to leave this path inside the repo, but for your own config file you *must* put it somewhere else!  
 
 % Run the configuration file, it builds the structure of options (ops)
 run(fullfile(pathToYourConfigFile, 'config_eMouse.m'))

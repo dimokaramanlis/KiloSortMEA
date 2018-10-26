@@ -65,7 +65,7 @@ st3 = [];
 rez.st3 = [];
 
 if ops.verbose
-   fprintf('Time %3.0fs. Running the final template matching pass...\n', toc) 
+   fprintf('Time %3.0f min. Running the final template matching pass...\n', toc/60) 
 end
 
 if Nbatch_buff<Nbatch
@@ -195,8 +195,8 @@ for ibatch = 1:Nbatch
     if rem(ibatch,100)==1
 %         nsort = sort(sum(nspikes2,2), 'descend');
         fprintf(repmat('\b', 1, numel(msg)));
-        msg             = sprintf('Time %2.2f, batch %d/%d,  NTOT %d\n', ...
-            toc, ibatch,Nbatch, size(st3,1));        
+        msg             = sprintf('Time %2.2f min, batch %d/%d,  NTOT %d\n', ...
+            toc/60, ibatch,Nbatch, size(st3,1));        
         fprintf(msg);
         
     end

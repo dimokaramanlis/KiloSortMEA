@@ -2,7 +2,7 @@ function [rez, DATA, uproj] = preprocessData(ops)
 tic;
 uproj = [];
 ops.nt0 	= getOr(ops, {'nt0'}, 61);
-
+ops.filter 	= getOr(ops, {'filer'}, true);
 
 if strcmp(ops.datatype , 'openEphys')
    ops = convertOpenEphysToRawBInary(ops);  % convert data, only for OpenEphys
@@ -84,13 +84,13 @@ Nbatch_buff = floor(4/5 * nint16s/rez.ops.Nchan /(NT-ops.ntbuff)); % factor of 4
 Nbatch_buff = min(Nbatch_buff, Nbatch);
 
 %% load data into patches, filter, compute covariance
-if isfield(ops,'fslow')&&ops.fslow<ops.fs/2
+if isfield(ops,'fslow')&&ops.fslow<ops.fs/2 && ops.filter
     [b1, a1] = butter(3, [ops.fshigh/ops.fs,ops.fslow/ops.fs]*2, 'bandpass');
 else
     [b1, a1] = butter(3, ops.fshigh/ops.fs*2, 'high');
 end
 
-fprintf('Time %3.0fs. Loading raw data... \n', toc);
+fprintf('Time %3.0f min. Loading raw data... \n', toc/60);
 fid = fopen(ops.fbinary, 'r');
 ibatch = 0;
 Nchan = rez.ops.Nchan;
@@ -141,10 +141,14 @@ while 1
     dataRAW = single(dataRAW);
     dataRAW = dataRAW(:, chanMapConn);
     
-    datr = filter(b1, a1, dataRAW);
-    datr = flipud(datr);
-    datr = filter(b1, a1, datr);
-    datr = flipud(datr);
+    if ops.filter
+        datr = filter(b1, a1, dataRAW);
+        datr = flipud(datr);
+        datr = filter(b1, a1, datr);
+        datr = flipud(datr);
+    else
+        datr=dataRAW;
+    end
     
     switch ops.whitening
         case 'noSpikes'
@@ -170,7 +174,7 @@ switch ops.whitening
         nPairs = nPairs/ibatch;
 end
 fclose(fid);
-fprintf('Time %3.0fs. Channel-whitening filters computed. \n', toc);
+fprintf('Time %3.0fs. Channel-whitening filters computed. \n', toc/60);
 switch ops.whitening
     case 'diag'
         CC = diag(diag(CC));
@@ -190,7 +194,7 @@ else
 end
 Wrot    = ops.scaleproc * Wrot;
 
-fprintf('Time %3.0fs. Loading raw data and applying filters... \n', toc);
+fprintf('Time %3.0f min. Loading raw data and applying filters... \n', toc/60);
 
 fid         = fopen(ops.fbinary, 'r');
 fidW    = fopen(ops.fproc, 'w');
@@ -238,10 +242,14 @@ for ibatch = 1:Nbatch
         dataRAW = single(dataRAW);
         dataRAW = dataRAW(:, chanMapConn);
         
-        datr = filter(b1, a1, dataRAW);
-        datr = flipud(datr);
-        datr = filter(b1, a1, datr);
-        datr = flipud(datr);
+        if ops.filter
+            datr = filter(b1, a1, dataRAW);
+            datr = flipud(datr);
+            datr = filter(b1, a1, datr);
+            datr = flipud(datr);
+        else
+            datr=dataRAW;
+        end
         
         datr = datr(ioffset + (1:NT),:);
     end
@@ -293,8 +301,8 @@ rez.Wrot    = Wrot;
 fclose(fidW);
 fclose(fid);
 if ops.verbose
-    fprintf('Time %3.2f. Whitened data written to disk... \n', toc);
-    fprintf('Time %3.2f. Preprocessing complete!\n', toc);
+    fprintf('Time %3.2f min. Whitened data written to disk... \n', toc/60);
+    fprintf('Time %3.2f min. Preprocessing complete!\n', toc/60);
 end
 
 
