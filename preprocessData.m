@@ -4,8 +4,10 @@ uproj = [];
 ops.nt0 	= getOr(ops, {'nt0'}, 61);
 ops.filter 	= getOr(ops, {'filer'}, true);
 
-if strcmp(ops.datatype , 'openEphys')
-   ops = convertOpenEphysToRawBInary(ops);  % convert data, only for OpenEphys
+% convert data, only for OpenEphys or MCD
+switch datatype 
+	case 'openEphys'; ops = convertOpenEphysToRawBInary(ops);
+	case 'mcd'; ops = convertMcdToRawBinaryCAR(ops);  
 end
 
 if ~isempty(ops.chanMap)
@@ -51,15 +53,12 @@ end
 NchanTOT = ops.NchanTOT;
 NT       = ops.NT ;
 
-rez.ops         = ops;
-rez.xc = xc;
-rez.yc = yc;
-if exist('xcoords')
-   rez.xcoords = xcoords;
-   rez.ycoords = ycoords;
+rez.ops = ops;
+rez.xc = xc; rez.yc = yc;
+if exist('xcoords','var')
+   rez.xcoords = xcoords; rez.ycoords = ycoords;
 else
-   rez.xcoords = xc;
-   rez.ycoords = yc;
+   rez.xcoords = xc; rez.ycoords = yc;
 end
 rez.connected   = connected;
 rez.ops.chanMap = chanMap;
@@ -77,12 +76,10 @@ else
     memallocated = ops.ForceMaxRAMforDat;
 end
 nint16s      = memallocated/2;
-
 NTbuff      = NT + 4*ops.ntbuff;
 Nbatch      = ceil(d.bytes/2/NchanTOT /(NT-ops.ntbuff));
 Nbatch_buff = floor(4/5 * nint16s/rez.ops.Nchan /(NT-ops.ntbuff)); % factor of 4/5 for storing PCs of spikes
 Nbatch_buff = min(Nbatch_buff, Nbatch);
-
 %% load data into patches, filter, compute covariance
 if isfield(ops,'fslow')&&ops.fslow<ops.fs/2 && ops.filter
     [b1, a1] = butter(3, [ops.fshigh/ops.fs,ops.fslow/ops.fs]*2, 'bandpass');
@@ -122,12 +119,9 @@ while 1
     end
     fseek(fid, offset, 'bof');
     buff = fread(fid, [NchanTOT NTbuff], '*int16');
-    
-    %         keyboard;
-    
-    if isempty(buff)
-        break;
-    end
+ 
+    if isempty(buff); break; end
+
     nsampcurr = size(buff,2);
     if nsampcurr<NTbuff
         buff(:, nsampcurr+1:NTbuff) = repmat(buff(:,nsampcurr), 1, NTbuff-nsampcurr);
@@ -174,7 +168,7 @@ switch ops.whitening
         nPairs = nPairs/ibatch;
 end
 fclose(fid);
-fprintf('Time %3.0fs. Channel-whitening filters computed. \n', toc/60);
+fprintf('Time %3.0f min. Channel-whitening filters computed. \n', toc/60);
 switch ops.whitening
     case 'diag'
         CC = diag(diag(CC));
@@ -197,7 +191,7 @@ Wrot    = ops.scaleproc * Wrot;
 fprintf('Time %3.0f min. Loading raw data and applying filters... \n', toc/60);
 
 fid         = fopen(ops.fbinary, 'r');
-fidW    = fopen(ops.fproc, 'w');
+if Nbatch_buff<Nbatch; fidW    = fopen(ops.fproc, 'W'); end
 
 if strcmp(ops.initialize, 'fromData')
     i0  = 0;
@@ -207,7 +201,7 @@ if strcmp(ops.initialize, 'fromData')
     rez.ops.wPCA = wPCA; % write wPCA back into the rez structure
     uproj = zeros(1e6,  size(wPCA,2) * Nchan, 'single');
 end
-%
+msg=[];
 for ibatch = 1:Nbatch
     if isproc(ibatch) %ibatch<=Nbatch_buff
         if ops.GPU
@@ -290,22 +284,25 @@ for ibatch = 1:Nbatch
         fwrite(fidW, datcpu, 'int16');
     end
     
+    % update status
+    if ops.verbose && rem(ibatch,20)==1
+        fprintf(repmat('\b', 1, numel(msg)));
+        msg = sprintf('Time %2.2f min, batch %d/%d',toc/60, ibatch,Nbatch);
+        fprintf(msg);
+    end
 end
+
+fclose(fid);
+if Nbatch_buff<Nbatch; fclose(fidW); end
 
 if strcmp(ops.initialize, 'fromData')
    uproj(i0+1:end, :) = []; 
 end
-Wrot        = gather_try(Wrot);
-rez.Wrot    = Wrot;
+Wrot = gather_try(Wrot); rez.Wrot = Wrot;
 
-fclose(fidW);
-fclose(fid);
 if ops.verbose
     fprintf('Time %3.2f min. Whitened data written to disk... \n', toc/60);
     fprintf('Time %3.2f min. Preprocessing complete!\n', toc/60);
 end
 
-
-rez.temp.Nbatch = Nbatch;
-rez.temp.Nbatch_buff = Nbatch_buff;
-
+rez.temp.Nbatch = Nbatch; rez.temp.Nbatch_buff = Nbatch_buff;
