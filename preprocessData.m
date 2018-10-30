@@ -5,7 +5,7 @@ ops.nt0 	= getOr(ops, {'nt0'}, 61);
 ops.filter 	= getOr(ops, {'filer'}, true);
 
 % convert data, only for OpenEphys or MCD
-switch datatype 
+switch ops.datatype 
 	case 'openEphys'; ops = convertOpenEphysToRawBInary(ops);
 	case 'mcd'; ops = convertMcdToRawBinaryCAR(ops);  
 end

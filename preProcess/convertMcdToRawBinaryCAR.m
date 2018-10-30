@@ -1,43 +1,114 @@
 function [ops] = convertMcdToRawBinaryCAR(ops)
 %CONVERTMCDTORAWBINARYCAR Save mcd files as binary without analog channels
-% 
+%Neuroshare functions and dlls have to be in MATLAB path
+%We can potentially add what's needed in Kilosort's folder
 %--------------------------------------------------------------------------
-%figure out inputs
-if nargin<2; filename='alldata.dat'; end
+%get mcd filenames
+mcdfilenames = dir([ops.root,filesep,'*.mcd']);
+[~, reindex]=sort(str2double(regexp(({mcdfilenames(:).name}),'\d+','match','once')));
+mcdfilenames={mcdfilenames(reindex).name}'; Nfiles=numel(mcdfilenames);
 %--------------------------------------------------------------------------
-[stimsamples]=getExperimentLength(ops.root);
-Nsamps=sum(stimsamples);
-arrLt=getArrayLayout(mcdpath); %try to fix this part
-[~,sortedId]=sort(arrLt.chMap); %try to fix this part
-channelsToRead=find(arrLt.connected(sortedId));
-fprintf('Total length of recording is %2.2f min...\n',sum(stimsamples)/arrLt.fs/60);
+%load the dll file
+[dllpath,libtoload] = getMCSdllPath();
+nsresult=mexprog(18, [dllpath, filesep, libtoload]);  %set dll library
 %--------------------------------------------------------------------------
-%allocate batch size
-chunkSize=3600000; %6 min for 10kHz fs, change if out of memory
-Nchunks=ceil(Nsamps/chunkSize);
+%get information about the recording time
+stimsamples=zeros(numel(mcdfilenames),1);
+for imcd=1:numel(mcdfilenames)
+    mcdpathname = [ops.root,filesep,mcdfilenames{imcd}]; %get mcd path
+    [nsresult, hfile] = mexprog(1, mcdpathname); %open file
+    [nsresult, mcdfileInfo] = mexprog(3, hfile); %get file info
+    stimsamples(imcd)=mcdfileInfo.TimeSpan/mcdfileInfo.TimeStampResolution;
+    nsresult = mexprog(14, hfile);%close file
+end
+NchanTOT=mcdfileInfo.EntityCount;
+ops.stimsamples=stimsamples;
+fs = 1/mcdfileInfo.TimeStampResolution; % sampling frequency
+if fs~=ops.fs
+    warning('Sampling frequency set is different from MCD files! Fixing...');
+    ops.fs=fs; ops.nt0=round(61*ops.fs/25e3);
+end
+fprintf('Total length of recording is %2.2f min...\n',sum(stimsamples)/fs/60);
+%--------------------------------------------------------------------------
+%get information about the array arrangement and the signal
+[nsresult, hfile] = mexprog(1, [ops.root,filesep,mcdfilenames{1}]); %open file
+[nsresult, chinfos] = mexprog(4, hfile,0:(NchanTOT-1)); %get channel info
+[nsresult, volinfos] = mexprog(7, hfile,0:(NchanTOT-1)); % get general info
+nsresult=mexprog(14, hfile);%close data file. 
+labellist = {chinfos.EntityLabel}; clear chinfos; %extract labels of the entities
+maxVoltage=volinfos(1).MaxVal; minVoltage=volinfos(1).MinVal;
+resVoltage=volinfos(1).Resolution; clear volinfos;
+newRange=2^15*[-1 1]; multFact=range(newRange)/(maxVoltage-minVoltage);
+%--------------------------------------------------------------------------
+% get the channel names based on the map of the array
+chanMap=getChannelMapMEA(labellist);
 %--------------------------------------------------------------------------
 fprintf('Saving .mcd data as .dat after common average referencing...\n');
 
-medianTrace = zeros(Nchunks, chunkSize,'int16');
+maxSamples=48e5;
+medianTrace = zeros(1, sum(stimsamples),'int16');
 
-fidOut= fopen(fullfile(ops.root,filename), 'W'); %using W (capital), makes writing ~4x faster
-msg=[];
-for iChunk=1:Nchunks
+fidOut= fopen(ops.fbinary, 'W'); %using W (capital), makes writing ~4x faster
+msg=[]; startidx=1;
+for iFile=1:Nfiles
+    mcdpathname = [ops.root,filesep,mcdfilenames{iFile}];
+    nsamples=stimsamples(iFile);
+    Nchunk=ceil(nsamples/maxSamples);
     
-    offset = max(0, (chunkSize * (iChunk-1)));
-    dat=readMcdData(mcdpath,stimsamples,channelsToRead,offset+1,chunkSize);
-    
-    dat = bsxfun(@minus, dat, median(dat,2)); % subtract median of each channel
-    tm = median(dat,1);
-    dat = bsxfun(@minus, dat, tm); % subtract median of each time point
-    fwrite(fidOut, dat, 'int16');
-    
-    medianTrace(iChunk,1:numel(tm))=tm;
+    [nsresult, hfile] = mexprog(1, mcdpathname);  %open file
+    for iChunk=1:Nchunk
+        offset = max(0, (maxSamples * (iChunk-1)));
+        sampstoload=int64(min(nsamples-offset,maxSamples));
+        [~,~,dat]=mexprog(8,hfile, chanMap, offset, sampstoload);%read data
+        dat=int16(dat*multFact)';
+        nsampcurr=size(dat,2);
+        if nsampcurr<sampstoload
+            dat(:,nsampcurr+1:sampstoload)=repmat(dat(:,nsampcurr),1,sampstoload-nsampcurr);
+        end
+        dat = bsxfun(@minus, dat, median(dat,2)); % subtract median of each channel
+        tm = median(dat,1);
+        dat = bsxfun(@minus, dat, tm); % subtract median of each time point
+        fwrite(fidOut, dat, 'int16');
+        
+        %save median trace
+        endidx=startidx+sampstoload-1;
+        medianTrace(startidx:endidx)=tm; startidx=endidx+1;
+    end
+    nsresult = mexprog(14, hfile); %close file
+
     %report status
     fprintf(repmat('\b', 1, numel(msg)));
-    msg=sprintf('chunk %d/%d \n',iChunk,Nchunks); fprintf(msg);
+    msg=sprintf('%d/%d mcd files processed \n',iFile,Nfiles); fprintf(msg);
+    
 end
-fclose(fidOut);
+fclose(fidOut); clear mexprog; %unload DLL
 save([ops.root filesep 'medianCAR.mat'], 'medianTrace', '-v7.3');
+%--------------------------------------------------------------------------
+end
 
+function chanMap = getChannelMapMEA(labellist)
+    anlg=contains(labellist,'anlg0001');
+    chnames = regexprep(extractAfter(labellist,'      '), '\s+', '')';
+    R = cell2mat(regexp(chnames,'(?<Name>\D+)(?<Nums>\d+)','names'));
+    namesCell=[{R.Name}' {R.Nums}'];
+    %remove analog channels already before sorting (don't have to be sorted)
+    namesCell(anlg,:)=[{'A'} {'1'}; {'A'} {'16'};{'R'} {'1'};{'R'} {'16'}];
+    [~,chmeaidx] = sortrows([namesCell(:,1) num2cell(cellfun(@(x)str2double(x),namesCell(:,2)))]);
+    chanMap=chmeaidx(~anlg(chmeaidx))-1;
+end
+
+function [dllpath,libtoload] = getMCSdllPath()
+%GETMCSDLLPATH Summary of this function goes here
+dlllocation = which('load_multichannel_systems_mcd');
+dllpath = fileparts(dlllocation);
+
+switch computer()
+    case 'PCWIN'; libtoload = 'nsMCDLibraryWin32.dll';
+    case 'GLNX86'; libtoload = 'nsMCDLibraryLinux32.so';
+    case 'PCWIN64'; libtoload = 'nsMCDLibraryWin64.dll';
+    case 'GLNXA64'; libtoload = 'nsMCDLibraryLinux64.so';
+    case 'MACI64'; libtoload = 'nsMCDLibraryMacIntel.dylib';
+    otherwise
+        disp('Your architecture is not supported'); return;
+end
 end
