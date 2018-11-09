@@ -22,6 +22,7 @@ for imcd=1:numel(mcdfilenames)
     nsresult = mexprog(14, hfile);%close file
 end
 NchanTOT=mcdfileInfo.EntityCount;
+stimsamples=floor(stimsamples);
 ops.stimsamples=stimsamples;
 fs = 1/mcdfileInfo.TimeStampResolution; % sampling frequency
 if fs~=ops.fs
@@ -58,20 +59,21 @@ for iFile=1:Nfiles
     [nsresult, hfile] = mexprog(1, mcdpathname);  %open file
     for iChunk=1:Nchunk
         offset = max(0, (maxSamples * (iChunk-1)));
-        sampstoload=int64(min(nsamples-offset,maxSamples));
+        sampstoload=min(nsamples-offset,maxSamples);
         [~,~,dat]=mexprog(8,hfile, chanMap, offset, sampstoload);%read data
         dat=int16(dat*multFact)';
-        nsampcurr=size(dat,2);
-        if nsampcurr<sampstoload
-            dat(:,nsampcurr+1:sampstoload)=repmat(dat(:,nsampcurr),1,sampstoload-nsampcurr);
-        end
+%         nsampcurr=size(dat,2);
+%         if nsampcurr<sampstoload
+%             dat(:,nsampcurr+1:int64(sampstoload))=repmat(dat(:,nsampcurr),...
+%                 1,int64(sampstoload)-nsampcurr);
+%         end
         dat = bsxfun(@minus, dat, median(dat,2)); % subtract median of each channel
         tm = median(dat,1);
         dat = bsxfun(@minus, dat, tm); % subtract median of each time point
         fwrite(fidOut, dat, 'int16');
         
         %save median trace
-        endidx=startidx+sampstoload-1;
+        endidx=startidx+numel(tm)-1;
         medianTrace(startidx:endidx)=tm; startidx=endidx+1;
     end
     nsresult = mexprog(14, hfile); %close file

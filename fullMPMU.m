@@ -195,7 +195,7 @@ for ibatch = 1:Nbatch
     if rem(ibatch,100)==1
 %         nsort = sort(sum(nspikes2,2), 'descend');
         fprintf(repmat('\b', 1, numel(msg)));
-        msg             = sprintf('Time %2.2f min, batch %d/%d,  NTOT %d\n', ...
+        msg             = sprintf('Time %2.0f min, batch %d/%d,  NTOT %d\n', ...
             toc/60, ibatch,Nbatch, size(st3,1));        
         fprintf(msg);
         

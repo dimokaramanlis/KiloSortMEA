@@ -17,7 +17,7 @@ rez                = fullMPMU(rez, DATA);% extract final spike times (overlappin
 delete(ops.fproc);
 %==========================================================================
 % AutoMerge. rez2Phy will use for clusters the new 5th column of st3 if you run this)
-%rez = merge_posthoc2(rez);
+%rez2 = merge_posthoc2(rez);
 %==========================================================================
 % save matlab results file % save python results file for Phy
 save(fullfile(ops.root,  'rez.mat'), 'rez', '-v7.3');

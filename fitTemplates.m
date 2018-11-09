@@ -109,7 +109,7 @@ end
 
 nswitch = [0];
 msg = [];
-fprintf('Time %3.0fs. Optimizing templates ...\n', toc)
+fprintf('Time %3.0f min. Optimizing templates ...\n', toc/60)
 while (i<=Nbatch * ops.nfullpasses+1)
     % set the annealing parameters
     if i<Nbatch*ops.nannealpasses
@@ -233,7 +233,7 @@ while (i<=Nbatch * ops.nfullpasses+1)
     if ops.verbose  && rem(i,20)==1
         nsort = sort(round(sum(nspikes,2)), 'descend');
         fprintf(repmat('\b', 1, numel(msg)));
-        msg = sprintf('Time %2.2f min, batch %d/%d, mu %2.2f, neg-err %2.6f, NTOT %d, n100 %d, n200 %d, n300 %d, n400 %d\n', ...
+        msg = sprintf('Time %2.0f min, batch %d/%d, mu %2.2f, neg-err %2.2f, NTOT %d, n100 %d, n200 %d, n300 %d, n400 %d\n', ...
             toc/60, i,Nbatch* ops.nfullpasses,nanmean(mu(:)), nanmean(delta), round(sum(nsort)), ...
             nsort(min(size(W,2), 100)), nsort(min(size(W,2), 200)), ...
             nsort(min(size(W,2), 300)), nsort(min(size(W,2), 400)));

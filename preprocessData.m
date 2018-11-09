@@ -4,10 +4,11 @@ uproj = [];
 ops.nt0 	= getOr(ops, {'nt0'}, 61);
 ops.filter 	= getOr(ops, {'filer'}, true);
 
-% convert data, only for OpenEphys or MCD
-switch ops.datatype 
-	case 'openEphys'; ops = convertOpenEphysToRawBInary(ops);
-	case 'mcd'; ops = convertMcdToRawBinaryCAR(ops);  
+if ~exist(ops.fbinary,'file')
+    switch ops.datatype %convert data, only for OpenEphys or MCD
+        case 'openEphys'; ops = convertOpenEphysToRawBInary(ops);
+        case 'mcd'; ops = convertMcdToRawBinaryCAR(ops);  
+    end
 end
 
 if ~isempty(ops.chanMap)
@@ -112,25 +113,20 @@ while 1
     ibatch = ibatch + ops.nSkipCov;
     
     offset = max(0, 2*NchanTOT*((NT - ops.ntbuff) * (ibatch-1) - 2*ops.ntbuff));
-    if ibatch==1
-        ioffset = 0;
-    else
-        ioffset = ops.ntbuff;
-    end
+    if ibatch==1; ioffset = 0; else; ioffset = ops.ntbuff; end
+    
+    %read data
     fseek(fid, offset, 'bof');
     buff = fread(fid, [NchanTOT NTbuff], '*int16');
- 
     if isempty(buff); break; end
 
     nsampcurr = size(buff,2);
     if nsampcurr<NTbuff
         buff(:, nsampcurr+1:NTbuff) = repmat(buff(:,nsampcurr), 1, NTbuff-nsampcurr);
     end
-    if ops.GPU
-        dataRAW = gpuArray(buff);
-    else
-        dataRAW = buff;
-    end
+    
+    if ops.GPU; dataRAW = gpuArray(buff); else; dataRAW = buff; end
+    
     dataRAW = dataRAW';
     dataRAW = single(dataRAW);
     dataRAW = dataRAW(:, chanMapConn);
@@ -164,23 +160,21 @@ while 1
 end
 CC = CC / ceil((Nbatch-1)/ops.nSkipCov);
 switch ops.whitening
-    case 'noSpikes'
-        nPairs = nPairs/ibatch;
+    case 'noSpikes'; nPairs = nPairs/ibatch;
 end
 fclose(fid);
+
 fprintf('Time %3.0f min. Channel-whitening filters computed. \n', toc/60);
+
 switch ops.whitening
-    case 'diag'
-        CC = diag(diag(CC));
-    case 'noSpikes'
-        CC = CC ./nPairs;
+    case 'diag'; CC = diag(diag(CC));
+    case 'noSpikes'; CC = CC ./nPairs;
 end
 
 if ops.whiteningRange<Inf
     ops.whiteningRange = min(ops.whiteningRange, Nchan);
     Wrot = whiteningLocal(gather_try(CC), yc, xc, ops.whiteningRange);
 else
-    %
     [E, D] 	= svd(CC);
     D = diag(D);
     eps 	= 1e-6;
@@ -199,7 +193,7 @@ if strcmp(ops.initialize, 'fromData')
     wPCA = ops.wPCA(ixt, 1:3);
     
     rez.ops.wPCA = wPCA; % write wPCA back into the rez structure
-    uproj = zeros(1e6,  size(wPCA,2) * Nchan, 'single');
+    uproj = zeros(2e6,  size(wPCA,2) * Nchan, 'single');
 end
 msg=[];
 for ibatch = 1:Nbatch
@@ -211,17 +205,13 @@ for ibatch = 1:Nbatch
         end
     else
         offset = max(0, 2*NchanTOT*((NT - ops.ntbuff) * (ibatch-1) - 2*ops.ntbuff));
-        if ibatch==1
-            ioffset = 0;
-        else
-            ioffset = ops.ntbuff;
-        end
-        fseek(fid, offset, 'bof');
+        if ibatch==1; ioffset = 0; else, ioffset = ops.ntbuff; end
         
+        %read data
+        fseek(fid, offset, 'bof');
         buff = fread(fid, [NchanTOT NTbuff], '*int16');
-        if isempty(buff)
-            break;
-        end
+        if isempty(buff); break; end
+        
         nsampcurr = size(buff,2);
         if nsampcurr<NTbuff
             buff(:, nsampcurr+1:NTbuff) = repmat(buff(:,nsampcurr), 1, NTbuff-nsampcurr);
@@ -232,15 +222,14 @@ for ibatch = 1:Nbatch
         else
             dataRAW = buff;
         end
+        
         dataRAW = dataRAW';
         dataRAW = single(dataRAW);
         dataRAW = dataRAW(:, chanMapConn);
         
         if ops.filter
-            datr = filter(b1, a1, dataRAW);
-            datr = flipud(datr);
-            datr = filter(b1, a1, datr);
-            datr = flipud(datr);
+            datr = filter(b1, a1, dataRAW); datr = flipud(datr);
+            datr = filter(b1, a1, datr); datr = flipud(datr);
         else
             datr=dataRAW;
         end
@@ -250,16 +239,12 @@ for ibatch = 1:Nbatch
     
     datr    = datr * Wrot;
     
-    if ops.GPU
-        dataRAW = gpuArray(datr);
-    else
-        dataRAW = datr;
-    end
-    %         dataRAW = datr;
-    dataRAW = single(dataRAW);
-    dataRAW = dataRAW / ops.scaleproc;
+    if ops.GPU; dataRAW = gpuArray(datr);
+    else, dataRAW = datr; end
+    % dataRAW = datr;
+    dataRAW = single(dataRAW); dataRAW = dataRAW/ops.scaleproc;
     
-    if strcmp(ops.initialize, 'fromData') %&& rem(ibatch, 10)==1
+    if strcmp(ops.initialize, 'fromData') && rem(ibatch, 8)==1 %load spikes every 8 batches
         % find isolated spikes
         [row, col, mu] = isolated_peaks(dataRAW, ops.loc_range, ops.long_range, ops.spkTh);
         
@@ -270,7 +255,7 @@ for ibatch = 1:Nbatch
         uS = reshape(uS,numel(row), Nchan * size(wPCA,2));
         
         if i0+numel(row)>size(uproj,1)
-            uproj(1e6 + size(uproj,1), 1) = 0;
+            uproj(2e5 + size(uproj,1), 1) = 0;
         end
         
         uproj(i0 + (1:numel(row)), :) = gather_try(uS);
@@ -285,19 +270,17 @@ for ibatch = 1:Nbatch
     end
     
     % update status
-    if ops.verbose && rem(ibatch,20)==1
+    if ops.verbose && rem(ibatch,100)==1
         fprintf(repmat('\b', 1, numel(msg)));
-        msg = sprintf('Time %2.2f min, batch %d/%d',toc/60, ibatch,Nbatch);
+        msg = sprintf('Time %2.0f min, batch %d/%d\n',toc/60, ibatch,Nbatch);
         fprintf(msg);
     end
 end
-
 fclose(fid);
 if Nbatch_buff<Nbatch; fclose(fidW); end
 
-if strcmp(ops.initialize, 'fromData')
-   uproj(i0+1:end, :) = []; 
-end
+if strcmp(ops.initialize, 'fromData'); uproj(i0+1:end, :) = []; end
+
 Wrot = gather_try(Wrot); rez.Wrot = Wrot;
 
 if ops.verbose
