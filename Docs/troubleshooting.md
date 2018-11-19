@@ -18,6 +18,11 @@ Problem:
 You're getting a long error message starting with
 `java.lang.ClassCastException: sun.awt.image.BufImgSurfaceData cannot be cast to sun.java2d.xr.XRSurfaceData`
 
-This is likely caused by the large Java objects created by MATLAB.
-Increase the Java object memory allocation under
-General > Java Heap Memory in MATLAB preferences.
+It seems that this is a problem specific to MATLAB on Ubuntu, [here's](https://www.mathworks.com/matlabcentral/answers/373897-external-monitor-throws-java-exception)
+the discussion on  MATLAB central.
+
+Solution:
+
+`echo "-Dsun.java2d.xrender=false" | sudo tee /usr/local/MATLAB/R2018a/bin/glnxa64/java.opts`
+
+You may need to adapt the path depending on your MATLAB version.
