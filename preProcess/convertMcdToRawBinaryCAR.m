@@ -80,7 +80,9 @@ for iFile=1:Nfiles
 
     %report status
     fprintf(repmat('\b', 1, numel(msg)));
-    msg=sprintf('%d/%d mcd files processed \n',iFile,Nfiles); fprintf(msg);
+    msg=sprintf('Time %3.0f min. Mcd files processed %d/%d (%0.2f) \n',...
+        toc/60, iFile,Nfiles, endidx/sum(stimsamples)); 
+    fprintf(msg);
     
 end
 fclose(fidOut); clear mexprog; %unload DLL

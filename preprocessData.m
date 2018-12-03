@@ -244,7 +244,7 @@ for ibatch = 1:Nbatch
     % dataRAW = datr;
     dataRAW = single(dataRAW); dataRAW = dataRAW/ops.scaleproc;
     
-    if strcmp(ops.initialize, 'fromData') && rem(ibatch, 8)==1 %load spikes every 8 batches
+    if strcmp(ops.initialize, 'fromData') && rem(ibatch, 5)==1 %load spikes every 5 batches
         % find isolated spikes
         [row, col, mu] = isolated_peaks(dataRAW, ops.loc_range, ops.long_range, ops.spkTh);
         

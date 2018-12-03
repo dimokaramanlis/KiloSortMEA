@@ -3,7 +3,7 @@ clear ops;
 ops.GPU                 = 1; % whether to run this code on an Nvidia GPU (much faster, mexGPUall first)		
 ops.parfor              = 1; % whether to use parfor to accelerate some parts of the algorithm		
 ops.verbose             = 1; % whether to print command line progress		
-ops.showfigures         = 1; % whether to plot figures during optimization		
+ops.showfigures         = 0; % whether to plot figures during optimization		
 %==========================================================================		
 ops.datatype            = 'mcd';  % binary ('dat', 'bin'), 'openEphys' or 'mcd'	
 ops.fbinary             = 'E:\Karamanlis_20180712_252MEA10030_mar_sr_le_pc2\all_data.dat'; % will be created for 'openEphys' and 'mcd'		
@@ -12,7 +12,7 @@ ops.root                = 'E:\Karamanlis_20180712_252MEA10030_mar_sr_le_pc2'; % 
 %==========================================================================
 % define the channel map as a filename (string) or simply an array		
 ops.chanMap             = fullfile(ops.root, 'chanMap.mat'); % make this file using createChannelMapFile.m		
-ops.Nfilt               = 32*20;  % number of clusters to use (2-4 times more than Nchan, should be a multiple of 32)     		
+ops.Nfilt               = 32*30;  % number of clusters to use (2-4 times more than Nchan, should be a multiple of 32)     		
 ops.nNeighPC            = 12; % visualization only (Phy): number of channnels to mask the PCs, leave empty to skip (12)		
 ops.nNeigh              = 16; % visualization only (Phy): number of neighboring templates to retain projections of (16)		
 ops.fs                  = 10e3; %sampling frequency		
@@ -22,7 +22,6 @@ ops.whitening           = 'full'; % type of whitening (default 'full', for 'noSp
 ops.nSkipCov            = 1; % compute whitening matrix from every N-th batch (1)		
 ops.whiteningRange      = 32; % how many channels to whiten together (Inf for whole probe whitening, should be fine if Nchan<=32)		
 %==========================================================================		
-		
 ops.criterionNoiseChannels = 0.2; % fraction of "noise" templates allowed to span all channel groups (see createChannelMapFile for more info). 		
 
 % other options for controlling the model and optimization		
@@ -32,10 +31,10 @@ ops.maxFR               = 20000;  % maximum number of spikes to extract per batc
 ops.fshigh              = 300;   % frequency for high pass filtering		
 % ops.fslow             = 2000;   % frequency for low pass filtering (optional)
 ops.filter              = false; % don't filter data if already filtered
-ops.ntbuff              = 64;    % samples of symmetrical buffer for whitening and spike detection		
+ops.ntbuff              = round(64*ops.fs/25e3);% samples of symmetrical buffer for whitening and spike detection		
 ops.scaleproc           = 200;   % int16 scaling of whitened data		
-ops.NT                  = 32*1200+ops.ntbuff;% this is the batch size (try decreasing if out of memory) 		
-% for GPU should be multiple of 32 + ntbuff		
+ops.NT                  = 32*512+ops.ntbuff;% this is the batch size (try decreasing if out of memory) 		
+% for GPU should be multiple of 32 + ntbuff
 ops.nt0                 =round(61*ops.fs/25e3); %spike visualization bins
 %==========================================================================		
 % the following options can improve/deteriorate results. 		
@@ -43,10 +42,10 @@ ops.nt0                 =round(61*ops.fs/25e3); %spike visualization bins
 % the third is the value used in the final pass. 		
 ops.Th               = [2 4 4];  % threshold for detecting spikes on template-filtered data
 %(suggested values were [4 10 10], too high for low amp spikes, [2 4 4] works best for MEA)
-ops.lam              = [5 20 20];   % large means amplitudes are forced around the mean 
-%(suggested values were [5 20 20])		
+ops.lam              = [12 40 40];   % large means amplitudes are forced around the mean 
+%(suggested values were [5 20 20], [10 30 30])		
 ops.nannealpasses    = 4;            % should be less than nfullpasses (4)		
-ops.momentum         = 1./[20 400];  % start with high momentum and anneal (1./[20 1000])		
+ops.momentum         = 1./[20 800];  % start with high momentum and anneal (1./[20 1000])		
 ops.shuffle_clusters = 1;            % allow merges and splits during optimization (1)		
 ops.mergeT           = .1;           % upper threshold for merging (.1)		
 ops.splitT           = .1;           % lower threshold for splitting (.1)		

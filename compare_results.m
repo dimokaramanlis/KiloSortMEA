@@ -1,26 +1,26 @@
 %compare results
 
-fpath='E:\Karamanlis_20180405_252MEA20030_sr_le';
+fpath='E:\Karamanlis_20180712_252MEA10030_mar_sr_le_pc2';
 rstr=load(fullfile(fpath, 'rez.mat'));
-rez=rstr.rez; clear rstr;
+st3=rstr.rez.st3; clear rstr;
 dataIgor=load(['C:\Users\Karamanlis_Dimokrati\Documents\DimosFolder\experiments\'...
-    'Karamanlis_20180405_sr_le\data_analysis\1_fullfieldflicker\1_raw_data.mat']);
+    'Karamanlis_20180712_mar_sr_le_pc2\data_analysis\7_frozencheckerflicker\7_raw_data.mat']);
 
 %%
 maxTime=min([max(dataIgor.ftimes) 60*10]); %use only 10 minutes of recording
 dt=0.1e-3; %in s
 alltrains = blinkBinner( 0:dt:maxTime,dataIgor.spiketimes , 1, 1)'; 
-maxLag=10*1e-3/dt;
 %%
-idcheck=48;
-indsKilosort=rez.st3(rez.st3(:,2)==idcheck+1 & rez.st3(:,1)<size(alltrains,1),1);
-trainKilosort=zeros(size(alltrains,1),1);
+maxLag=6*1e-3/dt;
+idcheck=353;
+indsKilosort=st3(st3(:,2)==idcheck+1 & st3(:,1)<size(alltrains,1),1);
+trainKilosort=zeros(size(alltrains,1),1,'single');
 trainKilosort(indsKilosort)=1;
 trainKilosort=gpuArray(trainKilosort);
 
 allxcorr=zeros(2*maxLag+1,size(alltrains,2));
 for cellId=1:size(alltrains,2)
-    trainIgor=gpuArray(alltrains(:,cellId));
+    trainIgor=gpuArray(single(alltrains(:,cellId)));
     trainxcorr=xcorr(trainKilosort,trainIgor, maxLag,'coeff');
     allxcorr(:,cellId)=gather(trainxcorr);
 end

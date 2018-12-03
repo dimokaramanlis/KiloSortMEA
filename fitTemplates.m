@@ -5,8 +5,7 @@ rez.ops.nt0min  = ceil(20 * nt0/61);
 
 ops = rez.ops;
 
-rng('default');
-rng(1);
+rng('default');rng(1);
 
 Nbatch      = rez.temp.Nbatch;
 Nbatch_buff = rez.temp.Nbatch_buff;
@@ -107,8 +106,9 @@ if Nbatch_buff<Nbatch
     fid = fopen(ops.fproc, 'r');
 end
 
-nswitch = [0];
-msg = [];
+if ops.showfigures; figure('Position',[200 200 1000 500]); end
+
+nswitch = [0]; msg = [];
 fprintf('Time %3.0f min. Optimizing templates ...\n', toc/60)
 while (i<=Nbatch * ops.nfullpasses+1)
     % set the annealing parameters
@@ -169,7 +169,7 @@ while (i<=Nbatch * ops.nfullpasses+1)
             plot(W(:,:,1))
             title('timecourses of top PC')
             
-            subplot(2,2,3)
+            subplot(2,2,[3 4])
             imagesc(U(:,:,1))
             title('spatial mask of top PC')
             
