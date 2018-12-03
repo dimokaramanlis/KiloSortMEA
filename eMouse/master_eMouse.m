@@ -33,8 +33,8 @@ rez                = fullMPMU(rez, DATA);% extract final spike times (overlappin
 benchmark_simulation(rez, fullfile(fpath, 'eMouseGroundTruth.mat'));
 
 % save python results file for Phy
-mkdir preAutoMerge
-rezToPhy(rez, [fpath,'preAutoMerge\']);
+mkdir([fpath, 'preAutoMerge'])
+rezToPhy(rez, [fpath,'preAutoMerge']);
 
 fprintf('Kilosort took %2.2f seconds vs 72.77 seconds on GTX 1080 + M2 SSD \n', toc)
 
@@ -54,8 +54,8 @@ rez = merge_posthoc2(rez);
 benchmark_simulation(rez, fullfile(fpath, 'eMouseGroundTruth.mat'));
 
 % save python results file for Phy
-mkdir postAutoMerge
-rezToPhy(rez, [fpath,'postAutoMerge\']);
+mkdir([fpath, 'postAutoMerge'])
+rezToPhy(rez, [fpath,'postAutoMerge']);
 
 %% save and clean up
 % save matlab results file for future use (although you should really only be using the manually validated spike_clusters.npy file)
