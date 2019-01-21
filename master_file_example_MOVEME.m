@@ -13,6 +13,7 @@ if exist((ops.fproc),'file'); delete(ops.fproc); end
 if ops.GPU; gpuDevice(1); end %initialize GPU (erases any existing GPU arrays)
 [rez, DATA, uproj] = preprocessData(ops); % preprocess data and extract spikes for initialization
 rez                = fitTemplates(rez, DATA, uproj); clear uproj; % fit templates iteratively
+if ops.GPU; gpuDevice(1); end %initialize GPU (erases any existing GPU arrays)
 rez                = fullMPMU(rez, DATA);% extract final spike times (overlapping extraction)
 delete(ops.fproc); % remove temporary file
 %==========================================================================
