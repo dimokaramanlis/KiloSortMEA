@@ -1,7 +1,7 @@
 function rez = fitTemplates(rez, DATA, uproj)
 
 nt0             = rez.ops.nt0;
-rez.ops.nt0min  = ceil(20 * nt0/61);
+rez.ops.nt0min  = round(20 * nt0/61);
 
 ops = rez.ops;
 

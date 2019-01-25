@@ -2,7 +2,7 @@ function [rez, DATA, uproj] = preprocessData(ops)
 tic;
 uproj = [];
 ops.nt0 	= getOr(ops, {'nt0'}, 61);
-ops.filter 	= getOr(ops, {'filer'}, true);
+ops.filter 	= getOr(ops, {'filter'}, true);
 
 if ~exist(ops.fbinary,'file')
     switch ops.datatype %convert data, only for OpenEphys or MCD
@@ -193,7 +193,7 @@ if strcmp(ops.initialize, 'fromData')
     wPCA = ops.wPCA(ixt, 1:3);
     
     rez.ops.wPCA = wPCA; % write wPCA back into the rez structure
-    uproj = zeros(2e6,  size(wPCA,2) * Nchan, 'single');
+    uproj = zeros(2.5e6,  size(wPCA,2) * Nchan, 'single');
 end
 msg=[];
 for ibatch = 1:Nbatch
@@ -244,7 +244,7 @@ for ibatch = 1:Nbatch
     % dataRAW = datr;
     dataRAW = single(dataRAW); dataRAW = dataRAW/ops.scaleproc;
     
-    if strcmp(ops.initialize, 'fromData') && rem(ibatch, 5)==1 %load spikes every 5 batches
+    if strcmp(ops.initialize, 'fromData') && rem(ibatch, 4)==1 %load spikes every 4 batches
         % find isolated spikes
         [row, col, mu] = isolated_peaks(dataRAW, ops.loc_range, ops.long_range, ops.spkTh);
         

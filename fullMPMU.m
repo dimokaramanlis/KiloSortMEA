@@ -95,7 +95,7 @@ if ~isempty(ops.nNeigh)
 end
 if ~isempty(ops.nNeighPC)
     nNeighPC  = ops.nNeighPC;
-    load PCspikes
+    Wi=ops.wPCA; %load PCspikes;
     ixt = round(linspace(1, size(Wi,1), ops.nt0));
     Wi = Wi(ixt, 1:3);
     rez.cProjPC = zeros(5e6, 3*nNeighPC, 'single');
