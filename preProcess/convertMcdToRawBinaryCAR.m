@@ -27,7 +27,7 @@ ops.stimsamples=stimsamples;
 fs = 1/mcdfileInfo.TimeStampResolution; % sampling frequency
 if fs~=ops.fs
     warning('Sampling frequency set is different from MCD files! Fixing...');
-    ops.fs=fs; ops.nt0=round(61*ops.fs/25e3);
+    ops.fs=fs;
 end
 fprintf('Total length of recording is %2.2f min...\n',sum(stimsamples)/fs/60);
 %--------------------------------------------------------------------------

@@ -10,8 +10,9 @@ xcoords(idx)=[]; ycoords(idx)=[];
 xcoords=elDist*xcoords(:); ycoords=elDist*ycoords(:);
 
 chanMap=1:numel(xcoords); chanMap0ind = chanMap - 1;
-connected=ones(size(xcoords)); kcoords=ones(size(xcoords));
+connected=true(size(xcoords)); kcoords=ones(size(xcoords));
+fs=10000;
 %-------------------------------------------------------------------------- 
 save(fullfile(fpath, 'chanMap.mat'), 'chanMap',...
-    'chanMap0ind','connected', 'xcoords', 'ycoords', 'kcoords')
+    'chanMap0ind','connected', 'xcoords', 'ycoords', 'kcoords','fs')
 end

@@ -22,5 +22,5 @@ delete(ops.fproc); % remove temporary file
 %==========================================================================
 % save matlab results file % save python results file for Phy
 save(fullfile(ops.root,  'rez.mat'), '-struct','rez', '-v7.3');
-rezToPhy(rez, ops.root);
+rezToPhy(rez, rez.ops.root);
 %==========================================================================

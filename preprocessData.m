@@ -284,8 +284,8 @@ if strcmp(ops.initialize, 'fromData'); uproj(i0+1:end, :) = []; end
 Wrot = gather_try(Wrot); rez.Wrot = Wrot;
 
 if ops.verbose
-    fprintf('Time %3.2f min. Whitened data written to disk... \n', toc/60);
-    fprintf('Time %3.2f min. Preprocessing complete!\n', toc/60);
+    fprintf('Time %2.0f min. Whitened data written to disk... \n', toc/60);
+    fprintf('Time %2.0f min. Preprocessing complete!\n', toc/60);
 end
 
 rez.temp.Nbatch = Nbatch; rez.temp.Nbatch_buff = Nbatch_buff;
