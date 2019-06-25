@@ -1,6 +1,6 @@
 %==========================================================================
 %Setup paths to to kilosort and npy-matlab folders
-KilosortPath='C:\Users\admin_lokal\Documents\GitHub\KiloSortMix';
+KilosortPath='C:\Users\admin_lokal\Documents\GitHub\KiloSortMEA';
 NpyMatlabPath='C:\Users\admin_lokal\Documents\GitHub\npy-matlab';
 addpath(genpath(KilosortPath)); addpath(genpath(NpyMatlabPath));
 %==========================================================================

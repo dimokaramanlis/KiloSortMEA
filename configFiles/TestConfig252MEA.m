@@ -58,8 +58,8 @@ ops.freqMergeSplit   = ceil (1600 * ops.fs/25e3);      % original was 1600
 % options for initializing spikes from data		
 ops.initialize      = 'fromData';    %'fromData' or 'no'		
 ops.spkTh           = -4;      % spike threshold in standard deviations (4)		
-ops.loc_range       = [5 4];  % ranges to detect peaks; plus/minus in time and channel ([3 1])		
-ops.long_range      = [30 6]; % ranges to detect isolated peaks ([30 6])		
+ops.loc_range       = [3 1];  % ranges to detect peaks; plus/minus in time and channel ([3 1])		
+ops.long_range      = [15 3]; % ranges to detect isolated peaks ([30 6])		
 ops.maskMaxChannels = 5;       % how many channels to mask up/down ([5])		
 ops.crit            = .65;     % upper criterion for discarding spike repeates (0.65)		
 ops.nFiltMax        = 10000;   % maximum "unique" spikes to consider (10000)		
