@@ -1,7 +1,10 @@
-function rez = fitTemplates(rez, DATA, uproj)
+function rez = fitTemplates(rez, DATA)
 
 nt0             = rez.ops.nt0;
-rez.ops.nt0min  = 8;%round(21*nt0/61)-1;%ceil(20 * nt0/61);
+
+fprintf('Time %3.0f min. Extracting 3 PCs from data...\n', toc/60)
+wPCA    = extractPCfromSnippets(rez, 3, DATA);
+rez.ops.wPCA = wPCA;
 
 ops = rez.ops;
 
@@ -26,11 +29,16 @@ batchstart = 0:NT:NT*(Nbatch-Nbatch_buff);
 delta = NaN * ones(Nbatch, 1);
 iperm = randperm(Nbatch);
 
+
+fprintf('Time %3.0f min. Initializing templates...\n', toc/60)
+
 switch ops.initialize
     case 'fromData'
+        uproj = get_uproj(rez, DATA);
         WUinit = optimizePeaks(ops,uproj);%does a scaled kmeans 
         dWU    = WUinit(:,:,1:Nfilt);
         %             dWU = alignWU(dWU);
+        clear uproj;
     otherwise
         if ~isempty(getOr(ops, 'initFilePath', [])) && ~getOr(ops, 'saveInitTemps', 0)            
             load(ops.initFilePath);
@@ -90,12 +98,10 @@ epu = ops.epu;
 
 
 %%
-% pmi = exp(-1./exp(linspace(log(ops.momentum(1)), log(ops.momentum(2)), Nbatch*ops.nannealpasses)));
-pmi = exp(-1./linspace(1/ops.momentum(1), 1/ops.momentum(2), Nbatch*ops.nannealpasses));
-% pmi = exp(-linspace(ops.momentum(1), ops.momentum(2), Nbatch*ops.nannealpasses));
 
-% pmi  = linspace(ops.momentum(1), ops.momentum(2), Nbatch*ops.nannealpasses);
+pmi = exp(-1./linspace(1/ops.momentum(1), 1/ops.momentum(2), Nbatch*ops.nannealpasses));
 Thi  = linspace(ops.Th(1),                 ops.Th(2), Nbatch*ops.nannealpasses);
+
 if ops.lam(1)==0
     lami = linspace(ops.lam(1), ops.lam(2), Nbatch*ops.nannealpasses);
 else
@@ -127,7 +133,7 @@ while (i<=Nbatch * ops.nfullpasses+1)
         
         % break bimodal clusters and remove low variance clusters
         if  ops.shuffle_clusters &&...
-                i>Nbatch && rem(rem(i,Nbatch), 4*400)==1    % i<Nbatch*ops.nannealpasses
+                i>Nbatch && rem(rem(i,Nbatch), ops.freqMergeSplit)==1    % i<Nbatch*ops.nannealpasses
             [dWU, dbins, nswitch, nspikes, iswitch] = ...
                 replace_clusters(dWU, dbins,  Nbatch, ops.mergeT, ops.splitT, WUinit, nspikes);
         end
@@ -230,7 +236,7 @@ while (i<=Nbatch * ops.nfullpasses+1)
     end
     
     % update status
-    if ops.verbose  && rem(i,20)==1
+    if ops.verbose  && rem(i,100)==1
         nsort = sort(round(sum(nspikes,2)), 'descend');
         fprintf(repmat('\b', 1, numel(msg)));
         msg = sprintf('Time %2.0f min, batch %d/%d, mu %2.2f, neg-err %2.2f, NTOT %d, n100 %d, n200 %d, n300 %d, n400 %d\n', ...

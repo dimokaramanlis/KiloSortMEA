@@ -1,0 +1,18 @@
+on 32bit and 64bit Windows I recommend to download and install the following packages:
+
+1) Visual Basic 2010 Express:
+ - link: http://go.microsoft.com/?linkid=9709929
+ - file is called 'vb_web.exe'
+
+
+2) Microsoft Windows SDK for Windows 7 and .NET Framework 4:
+ - link: http://www.microsoft.com/download/en/details.aspx?id=8279
+ - file is called 'winsdk_web.exe'
+
+
+3) Microsoft Visual C++ 2010 Service Pack 1 Compiler Update for the Windows SDK 7.1
+ - link: http://www.microsoft.com/download/en/details.aspx?id=4422
+ - file is called 'VC-Compiler-KB2519277.exe'
+
+
+

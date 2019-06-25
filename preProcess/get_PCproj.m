@@ -1,9 +1,8 @@
-function Us = get_PCproj(S1, row, col, wPCA, maskMaxChans)
+function Us = get_PCproj(S1, row, col, wPCA, maskMaxChans,nt0min)
 
 [~, nChan] = size(S1);
-%dt = -21 + [1:size(wPCA,1)];
-%dt =-round(21 * size(wPCA,1)/61)+ (1:size(wPCA,1));
-dt =-9+ (1:size(wPCA,1));
+
+dt =-nt0min + (1:size(wPCA,1));
 
 inds = repmat(row', numel(dt), 1) + repmat(dt', 1, numel(row));
 

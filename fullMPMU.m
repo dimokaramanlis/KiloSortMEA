@@ -76,7 +76,8 @@ msg = [];
 if ~isempty(ops.nNeigh)
     nNeigh    = ops.nNeigh;
     
-    rez.cProj = zeros(5e6, nNeigh, 'single');
+    %initialize for 50 million spikes
+    rez.cProj = zeros(50e6, nNeigh, 'single'); %zeros(5e6, nNeigh, 'single');
 
     % sort pairwise templates
     nsp = sum(rez.nspikes,2);
@@ -98,7 +99,8 @@ if ~isempty(ops.nNeighPC)
     Wi=ops.wPCA; %load PCspikes;
     ixt = round(linspace(1, size(Wi,1), ops.nt0));
     Wi = Wi(ixt, 1:3);
-    rez.cProjPC = zeros(5e6, 3*nNeighPC, 'single');
+    %initialize for 50 million spikes
+    rez.cProjPC = zeros(50e6, 3*nNeighPC, 'single'); %zeros(5e6, 3*nNeighPC, 'single');
     
     % sort best channels
     [~, iNch]       = sort(abs(U(:,:,1)), 1, 'descend');
@@ -165,6 +167,11 @@ for ibatch = 1:Nbatch
             coefs           = reshape(permute(coefs, [3 1 2]), [], numel(st));
             coefs           = coefs .* maskPC(:, id+1);
             iCoefs          = reshape(find(maskPC(:, id+1)>0), 3*nNeighPC, []);
+            
+            if irun+numel(st)>size(rez.cProjPC,1)
+                rez.cProjPC(10e6 + size(rez.cProjPC,1), 1) = 0; %add ten million spike places if needed
+            end
+            
             rez.cProjPC(irun + (1:numel(st)), :) = gather_try(coefs(iCoefs)');
         end
         if ~isempty(ops.nNeigh)
@@ -175,12 +182,17 @@ for ibatch = 1:Nbatch
             
             PCproj          = maskTT(:, id+1) .* PCproj;
             iPP             = reshape(find(maskTT(:, id+1)>0), nNeigh, []);
+            
+            if irun+numel(st)>size(rez.cProj,1)
+                rez.cProj(10e6 + size(rez.cProj,1), 1) = 0; %add ten million spike places if needed
+            end
+            
             rez.cProj(irun + (1:numel(st)), :) = PCproj(iPP)';
         end
         % increment number of spikes
         irun            = irun + numel(st);
         
-        if ibatch==1;
+        if ibatch==1
             ioffset         = 0;
         else
             ioffset         = ops.ntbuff;
@@ -260,7 +272,8 @@ if Nbatch_buff<Nbatch
 end
 
 % center the templates
-rez.W               = cat(1, zeros(nt0 - (ops.nt0-1-ops.nt0min), Nfilt, Nrank), rez.W);
+%rez.W               = cat(1, zeros(nt0 - (ops.nt0-1-ops.nt0min), Nfilt, Nrank), rez.W);
+rez.W               = cat(1, zeros(ops.nt0 - 2*ops.nt0min - 1, Nfilt, Nrank), rez.W);
 rez.WrotInv         = (rez.Wrot/200)^-1;
 %%
 Urot = U;
@@ -270,4 +283,7 @@ end
 for n = 1:size(U,2)
     rez.Wraw(:,:,n) = mu(n) * sq(Urot(:,n,:)) * sq(rez.W(:,n,:))';
 end
-%
+
+if ops.verbose
+   fprintf('Time %3.0f min. Sorting is done!\n', toc/60) 
+end

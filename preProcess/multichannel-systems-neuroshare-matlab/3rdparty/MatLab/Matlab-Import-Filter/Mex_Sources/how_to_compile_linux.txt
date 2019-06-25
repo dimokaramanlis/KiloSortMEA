@@ -1,0 +1,6 @@
+1) compile files
+$ gcc -c -fPIC -I/usr/local/MATLAB/R2011a/extern/include main.c ns.c mexversion.c
+
+2) link files
+$ gcc -shared -Wl main.o mexversion.o ns.o -o mexprog.mexa64 
+

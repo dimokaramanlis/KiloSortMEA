@@ -1,13 +1,14 @@
-function [rez, DATA, uproj] = preprocessData(ops)
+function [rez, DATA] = preprocessData(ops)
 tic;
-uproj = [];
+
 ops.nt0 	= getOr(ops, {'nt0'}, 61);
 ops.filter 	= getOr(ops, {'filter'}, true);
 
 if ~exist(ops.fbinary,'file')
     switch ops.datatype %convert data, only for OpenEphys or MCD
         case 'openEphys'; ops = convertOpenEphysToRawBInary(ops);
-        case 'mcd'; ops = convertMcdToRawBinaryCAR(ops);  
+        case 'mcd' 
+            ops = convertMcdToRawBinary(ops);  
     end
 end
 
@@ -131,6 +132,9 @@ while 1
     dataRAW = single(dataRAW);
     dataRAW = dataRAW(:, chanMapConn);
     
+    % subtract the mean from each channel
+    dataRAW = dataRAW - mean(dataRAW, 1);    
+    
     if ops.filter
         datr = filter(b1, a1, dataRAW);
         datr = flipud(datr);
@@ -139,6 +143,12 @@ while 1
     else
         datr=dataRAW;
     end
+    
+      % CAR, common average referencing by median
+    if getOr(ops, 'CAR', 1)
+        datr = datr - median(datr, 2);
+    end
+    
     
     switch ops.whitening
         case 'noSpikes'
@@ -187,14 +197,7 @@ fprintf('Time %3.0f min. Loading raw data and applying filters... \n', toc/60);
 fid         = fopen(ops.fbinary, 'r');
 if Nbatch_buff<Nbatch; fidW    = fopen(ops.fproc, 'W'); end
 
-if strcmp(ops.initialize, 'fromData')
-    i0  = 0;
-    ixt  = round(linspace(1, size(ops.wPCA,1), ops.nt0));
-    wPCA = ops.wPCA(ixt, 1:3);
-    
-    rez.ops.wPCA = wPCA; % write wPCA back into the rez structure
-    uproj = zeros(2.5e6,  size(wPCA,2) * Nchan, 'single');
-end
+
 msg=[];
 for ibatch = 1:Nbatch
     if isproc(ibatch) %ibatch<=Nbatch_buff
@@ -227,6 +230,9 @@ for ibatch = 1:Nbatch
         dataRAW = single(dataRAW);
         dataRAW = dataRAW(:, chanMapConn);
         
+        % subtract the mean from each channel
+        dataRAW = dataRAW - mean(dataRAW, 1);   
+        
         if ops.filter
             datr = filter(b1, a1, dataRAW); datr = flipud(datr);
             datr = filter(b1, a1, datr); datr = flipud(datr);
@@ -234,33 +240,15 @@ for ibatch = 1:Nbatch
             datr=dataRAW;
         end
         
+        % CAR, common average referencing by median
+        if getOr(ops, 'CAR', 1)
+            datr = datr - median(datr, 2);
+        end
+    
         datr = datr(ioffset + (1:NT),:);
     end
     
     datr    = datr * Wrot;
-    
-    if ops.GPU; dataRAW = gpuArray(datr);
-    else, dataRAW = datr; end
-    % dataRAW = datr;
-    dataRAW = single(dataRAW); dataRAW = dataRAW/ops.scaleproc;
-    
-    if strcmp(ops.initialize, 'fromData') && rem(ibatch, 4)==1 %load spikes every 4 batches
-        % find isolated spikes
-        [row, col, mu] = isolated_peaks(dataRAW, ops.loc_range, ops.long_range, ops.spkTh);
-        
-        % find their PC projections
-        uS = get_PCproj(dataRAW, row, col, wPCA, ops.maskMaxChannels);
-        
-        uS = permute(uS, [2 1 3]);
-        uS = reshape(uS,numel(row), Nchan * size(wPCA,2));
-        
-        if i0+numel(row)>size(uproj,1)
-            uproj(2e5 + size(uproj,1), 1) = 0;
-        end
-        
-        uproj(i0 + (1:numel(row)), :) = gather_try(uS);
-        i0 = i0 + numel(row);
-    end
     
     if ibatch<=Nbatch_buff
         DATA(:,:,ibatch) = gather_try(datr);
@@ -278,8 +266,6 @@ for ibatch = 1:Nbatch
 end
 fclose(fid);
 if Nbatch_buff<Nbatch; fclose(fidW); end
-
-if strcmp(ops.initialize, 'fromData'); uproj(i0+1:end, :) = []; end
 
 Wrot = gather_try(Wrot); rez.Wrot = Wrot;
 
