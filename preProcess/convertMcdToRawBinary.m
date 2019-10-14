@@ -1,4 +1,4 @@
-function [ops] = convertMcdToRawBinary(ops)
+function [bininfo] = convertMcdToRawBinary(ops, targetpath)
 %CONVERTMCDTORAWBINARY Save mcd files as binary without analog channels
 %Neuroshare functions and dlls have to be in MATLAB path
 %We can potentially add what's needed in Kilosort's folder
@@ -15,23 +15,26 @@ mcdfilenames={mcdfilenames(reindex).name}'; Nfiles=numel(mcdfilenames);
 nsresult=mexprog(18, [dllpath, filesep, libtoload]);  %set dll library
 %--------------------------------------------------------------------------
 %get information about the recording time
-stimsamples=zeros(numel(mcdfilenames),1);
+filesamples = zeros(numel(mcdfilenames),1);
+stimids = zeros(numel(mcdfilenames),1);
+
 for imcd=1:numel(mcdfilenames)
     mcdpathname = [ops.root,filesep,mcdfilenames{imcd}]; %get mcd path
     [nsresult, hfile] = mexprog(1, mcdpathname); %open file
     [nsresult, mcdfileInfo] = mexprog(3, hfile); %get file info
-    stimsamples(imcd)=mcdfileInfo.TimeSpan/mcdfileInfo.TimeStampResolution;
+    filesamples(imcd)=mcdfileInfo.TimeSpan/mcdfileInfo.TimeStampResolution;
     nsresult = mexprog(14, hfile);%close file
+    stimids (imcd) = cell2mat(textscan(mcdfilenames{imcd}, '%d_'));
 end
-NchanTOT=mcdfileInfo.EntityCount;
-stimsamples=floor(stimsamples);
-ops.stimsamples=stimsamples;
-fs = 1/mcdfileInfo.TimeStampResolution; % sampling frequency
-if fs~=ops.fs
-    warning('Sampling frequency set is different from MCD files! Fixing...');
-    ops.fs=fs;
-end
-fprintf('Total length of recording is %2.2f min...\n',sum(stimsamples)/fs/60);
+NchanTOT = mcdfileInfo.EntityCount;
+filesamples = floor(filesamples);
+%--------------------------------------------------------------------------
+% make bininfo file for splitting later
+bininfo.stimsamples = accumarray(stimids, filesamples,[],@sum);
+fs = round(1/mcdfileInfo.TimeStampResolution); % sampling frequency
+bininfo.fs=fs;
+bininfo.NchanTOT = NchanTOT-4;
+fprintf('Total length of recording is %2.2f min...\n', sum(filesamples)/fs/60);
 %--------------------------------------------------------------------------
 %get information about the array arrangement and the signal
 [nsresult, hfile] = mexprog(1, [ops.root,filesep,mcdfilenames{1}]); %open file
@@ -44,17 +47,17 @@ resVoltage=volinfos(1).Resolution; clear volinfos;
 newRange=2^15*[-1 1]; multFact=range(newRange)/(maxVoltage-minVoltage);
 %--------------------------------------------------------------------------
 % get the channel names based on the map of the array
-chanMap=getChannelMapMEA(labellist);
+chanMap = getChannelMapForRawBinary(labellist,'dataformat','mcd','channelnumber',NchanTOT);
 %--------------------------------------------------------------------------
 fprintf('Saving .mcd data as .dat...\n');
 
 maxSamples=64e5;
 
-fidOut= fopen(ops.fbinary, 'W'); %using W (capital), makes writing ~4x faster
+fidOut= fopen(targetpath, 'W'); %using W (capital), makes writing ~4x faster
 msg=[]; 
 for iFile=1:Nfiles
     mcdpathname = [ops.root,filesep,mcdfilenames{iFile}];
-    nsamples=stimsamples(iFile);
+    nsamples = filesamples(iFile);
     Nchunk=ceil(nsamples/maxSamples);
     
     [nsresult, hfile] = mexprog(1, mcdpathname);  %open file
@@ -83,16 +86,16 @@ fclose(fidOut); clear mexprog; %unload DLL
 %--------------------------------------------------------------------------
 end
 
-function chanMap = getChannelMapMEA(labellist)
-    anlg=contains(labellist,'anlg0001');
-    chnames = regexprep(extractAfter(labellist,'      '), '\s+', '')';
-    R = cell2mat(regexp(chnames,'(?<Name>\D+)(?<Nums>\d+)','names'));
-    namesCell=[{R.Name}' {R.Nums}'];
-    %remove analog channels already before sorting (don't have to be sorted)
-    namesCell(anlg,:)=[{'A'} {'1'}; {'A'} {'16'};{'R'} {'1'};{'R'} {'16'}];
-    [~,chmeaidx] = sortrows([namesCell(:,1) num2cell(cellfun(@(x)str2double(x),namesCell(:,2)))]);
-    chanMap=chmeaidx(~anlg(chmeaidx))-1;
-end
+% function chanMap = getChannelMapMEA(labellist)
+%     anlg=contains(labellist,'anlg0001');
+%     chnames = regexprep(extractAfter(labellist,'      '), '\s+', '')';
+%     R = cell2mat(regexp(chnames,'(?<Name>\D+)(?<Nums>\d+)','names'));
+%     namesCell=[{R.Name}' {R.Nums}'];
+%     %remove analog channels already before sorting (don't have to be sorted)
+%     namesCell(anlg,:)=[{'A'} {'1'}; {'A'} {'16'};{'R'} {'1'};{'R'} {'16'}];
+%     [~,chmeaidx] = sortrows([namesCell(:,1) num2cell(cellfun(@(x)str2double(x),namesCell(:,2)))]);
+%     chanMap=chmeaidx(~anlg(chmeaidx))-1;
+% end
 
 function [dllpath,libtoload] = getMCSdllPath()
 %GETMCSDLLPATH Summary of this function goes here

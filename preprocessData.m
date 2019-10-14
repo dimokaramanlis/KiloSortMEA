@@ -4,14 +4,6 @@ tic;
 ops.nt0 	= getOr(ops, {'nt0'}, 61);
 ops.filter 	= getOr(ops, {'filter'}, true);
 
-if ~exist(ops.fbinary,'file')
-    switch ops.datatype %convert data, only for OpenEphys or MCD
-        case 'openEphys'; ops = convertOpenEphysToRawBInary(ops);
-        case 'mcd' 
-            ops = convertMcdToRawBinary(ops);  
-    end
-end
-
 if ~isempty(ops.chanMap)
     if ischar(ops.chanMap)
         load(ops.chanMap);
@@ -153,7 +145,8 @@ while 1
     switch ops.whitening
         case 'noSpikes'
             smin      = my_min(datr, ops.loc_range, [1 2]);
-            sd = std(datr, [], 1);
+            %sd = std(datr, [], 1);
+            sd = mad(datr,1,1);
             peaks     = single(datr<smin+1e-3 & bsxfun(@lt, datr, ops.spkTh * sd));
             blankout  = 1+my_min(-peaks, ops.long_range, [1 2]);
             smin      = datr .* blankout;

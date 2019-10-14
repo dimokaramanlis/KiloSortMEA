@@ -1,4 +1,4 @@
-function rez = fullMPMU(rez, DATA)
+function rez = fullMPMUNew(rez, DATA)
 
 ops = rez.ops;
 
@@ -48,7 +48,6 @@ if ops.GPU
     WtW = gpuArray(WtW);
 end
 %%
-Nbatch_buff = rez.temp.Nbatch_buff;
 Nbatch      = rez.temp.Nbatch;
 Nchan       = ops.Nchan;
 if ~ops.GPU
@@ -68,9 +67,7 @@ if ops.verbose
    fprintf('Time %3.0f min. Running the final template matching pass...\n', toc/60) 
 end
 
-if Nbatch_buff<Nbatch
-    fid = fopen(ops.fproc, 'r');
-end
+fid = fopen(ops.fproc, 'r');
 msg = [];
 
 if ~isempty(ops.nNeigh)
@@ -118,16 +115,14 @@ i1nt0 = int32([1:nt0])';
 LAM = lam .* (20./mu).^2;
 
 NT = ops.NT;
-batchstart = 0:NT:NT*(Nbatch-Nbatch_buff);
+batchstart = 0:NT:NT*Nbatch;
 
 for ibatch = 1:Nbatch    
-    if ibatch>Nbatch_buff
-        offset = 2 * ops.Nchan*batchstart(ibatch-Nbatch_buff); % - ioffset;
-        fseek(fid, offset, 'bof');
-        dat = fread(fid, [NT ops.Nchan], '*int16');
-    else
-       dat = DATA(:,:,ibatch); 
-    end
+    
+    offset = 2 * ops.Nchan*batchstart(ibatch); % - ioffset;
+    fseek(fid, offset, 'bof');
+    dat = fread(fid, [NT ops.Nchan], '*int16');
+
     if ops.GPU
         dataRAW = gpuArray(dat);
     else
@@ -214,9 +209,8 @@ for ibatch = 1:Nbatch
     end
 end
 %close the data file
-if Nbatch_buff<Nbatch
-    fclose(fid);
-end
+fclose(fid);
+
 %%
 [~, isort]      = sort(st3(:,1), 'ascend');
 st3             = st3(isort,:);

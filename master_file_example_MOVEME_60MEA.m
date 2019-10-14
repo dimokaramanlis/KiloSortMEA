@@ -5,8 +5,10 @@ NpyMatlabPath='C:\Users\admin_lokal\Documents\GitHub\npy-matlab';
 addpath(genpath(KilosortPath)); addpath(genpath(NpyMatlabPath));
 %==========================================================================
 %Run configuration file, take from Github folder and put it somewhere else (together with the master_file)
-run(fullfile(KilosortPath, 'configFiles','TestConfig252MEA.m'));
-create252ChannelMapFile(ops.root); 
+run(fullfile(KilosortPath, 'configFiles','TestConfig60MEAculture.m'));
+%create252ChannelMapFile(ops.root); 
+meaChannelMap([8 8], 100, ops.root, 1); % last option is important to exclude analog channels
+
 if exist((ops.fproc),'file'); delete(ops.fproc); end
 %==========================================================================
 %Do sorting
@@ -16,7 +18,7 @@ rez                = fitTemplates(rez, DATA); % fit templates iteratively
 if ops.GPU; gpuDevice(1); end %initialize GPU (erases any existing GPU arrays)
 rez                = fullMPMU(rez, DATA);% extract final spike times (overlapping extraction)
 delete(ops.fproc); % remove temporary file
-%if (exist(fileparts(ops.fproc),'dir')), rmdir(fileparts(ops.fproc)); end % delete temp folder
+if (exist(fileparts(ops.fproc),'dir')), rmdir(fileparts(ops.fproc)); end % delete temp folder
 %==========================================================================
 % AutoMerge. rez2Phy will use for clusters the new 5th column of st3 if you run this)
 %rez2 = merge_posthoc2(rez);
@@ -30,4 +32,5 @@ rez.cProj = []; rez.cProjPC = [];
 % save matlab results file 
 %save(fullfile(ops.root,  'rez.mat'),'rez', '-v7.3');
 save(fullfile(ops.binpathD,  'rez.mat'),'rez', '-v7.3');
+disp('running is finito!');
 %==========================================================================

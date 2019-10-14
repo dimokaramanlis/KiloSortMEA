@@ -1,11 +1,10 @@
-function wPCA = extractPCfromSnippets(rez, nPCs, DATA)
+function wPCA = extractPCfromSnippets(rez, nPCs)
 
 ops = rez.ops;
 
 % Nchan 	= ops.Nchan;
 
 Nbatch      = rez.temp.Nbatch;
-Nbatch_buff = rez.temp.Nbatch_buff;
 
 NT  	= ops.NT;
 batchstart = 0:NT:NT*Nbatch;
@@ -15,18 +14,16 @@ CC = zeros(ops.nt0);
 fid = fopen(ops.fproc, 'r');
 
 for ibatch = 1:100:Nbatch
-    if ibatch>Nbatch_buff
-        offset = 2 * ops.Nchan*batchstart(ibatch-Nbatch_buff);
-        fseek(fid, offset, 'bof');
-        dat = fread(fid, [NT ops.Nchan], '*int16');
-    else
-        dat = DATA(:,:,ibatch);
-    end
+
+    offset = 2 * ops.Nchan*batchstart(ibatch);
+    fseek(fid, offset, 'bof');
+    dat = fread(fid, [NT ops.Nchan], '*int16');
+
     % move data to GPU and scale it
     if ops.GPU
         dataRAW = gpuArray(dat);
     else
-        dataRAW = dat;
+        dataRAW = dat;m
     end
     dataRAW = single(dataRAW);
     dataRAW = dataRAW / ops.scaleproc;

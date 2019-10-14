@@ -8,8 +8,8 @@ nSpikesPerBatch = 4000;
 nbatch = ceil(nspike / nSpikesPerBatch);
 
 
-uBase = zeros(1e4, nProj);
-nS = zeros(1e4, 1);
+uBase = zeros(ops.nFiltMax, nProj);
+nS = zeros(ops.nFiltMax, 1);
 ncurr = 1;
 
 for ibatch = 1:nbatch
@@ -28,7 +28,7 @@ for ibatch = 1:nbatch
 
     ncurr = ncurr + size(uNew,1);
 
-    if ncurr>1e4
+    if ncurr>ops.nFiltMax
         break;
     end
 end

@@ -1,35 +1,58 @@
-clear ops;
+function [ops] = getKsOptionsMEA(metadata)
+%GETKSOPTIONSMEA Summary of this function goes here
+%   Detailed explanation goes here
+
 %==========================================================================
+% main processing options
 ops.GPU                 = 1; % whether to run this code on an Nvidia GPU (much faster, mexGPUall first)		
 ops.parfor              = 1; % whether to use parfor to accelerate some parts of the algorithm		
 ops.verbose             = 1; % whether to print command line progress		
 ops.showfigures         = 0; % whether to plot figures during optimization		
-%==========================================================================		
-ops.root = uigetdir('D:/','Give me the directory of the experiment');
-%[~, dirname] = fileparts(ops.root);
-ops.datatype            = 'mcd';  % binary ('dat', 'bin'), 'openEphys' or 'mcd'
-%binpathD = fullfile('D:/TestData/', dirname);
-ops.binpathD = strrep(ops.root,ops.root(1:2),'F:/');   % added by MHK
-if ~exist(ops.binpathD,'dir'); mkdir(ops.binpathD); end
-%ops.fbinary             = fullfile(ops.binpathD, '/alldata.dat'); % will be created for 'openEphys' and 'mcd'	
-ops.fbinary = fullfile(ops.root, '/alldata.dat');
-ops.fproc               = fullfile(ops.binpathD, '/whitenedtemplates/temp_wh.dat');%'F:/Kilosort/DATA/temp_wh.dat'; % residual from RAM of preprocessed data	
-if ~(exist(fileparts(ops.fproc),'dir')), mkdir(fileparts(ops.fproc)); end
-%==========================================================================
-% define the channel map as a filename (string) or simply an array		
-ops.chanMap             = fullfile(ops.root, 'chanMap.mat'); % make this file using createChannelMapFile.m		
-ops.Nfilt               = 32*50;  % number of clusters to use (2-4 times more than Nchan, should be a multiple of 32)     		
-ops.nNeighPC            = 8; % visualization only (Phy): number of channnels to mask the PCs, leave empty to skip (12)		
-ops.nNeigh              = 12; % visualization only (Phy): number of neighboring templates to retain projections of (16)		
-ops.fs                  = 10e3; %sampling frequency		
-%==========================================================================		
+% options for reading/saving files
+ops.root        = metadata.root;
+ops.fbinary     = metadata.binpath;
+ops.fproc       = metadata.whpath;
+% options for posthoc merges (under construction)		
+ops.fracse  = 0.1; % binning step along discriminant axis for posthoc merges (in units of sd)		
+ops.epu     = Inf;
+% maximum RAM the algorithm will try to use for storing whitened data; on Windows it will autodetect.
+ops.ForceMaxRAMforDat   = 0e9; 
+%=========================================================================
 % options for channel whitening		
 ops.whitening           = 'full'; % type of whitening (default 'full', for 'noSpikes' set options for spike detection below)		
 ops.nSkipCov            = 10; % compute whitening matrix from every N-th batch (1)		
 ops.whiteningRange      = 4; % how many channels to whiten together (Inf for whole probe whitening, should be fine if Nchan<=32)		
-%==========================================================================		
-ops.nt0                 = 15; %spike template time bins
-ops.nt0min              = 4;
+%=========================================================================
+% channel-specific options
+switch metadata.meatype
+    case '252MEA10030'
+        meaChannelMap([16 16], 100,  fullfile(ops.root, 'ks_sorted'), 1); 
+        ops.Nfilt               = 32*50;
+        ops.NchanTOT            = 252;
+    case '252MEA20030'    
+        meaChannelMap([16 16], 200,  fullfile(ops.root, 'ks_sorted'), 1); 
+        ops.Nfilt               = 32*50;
+        ops.NchanTOT            = 252;
+    case '60MEA10030'    
+        meaChannelMap([8 8], 100,  fullfile(ops.root, 'ks_sorted'), 1); 
+        ops.Nfilt               = 32*16;
+        ops.NchanTOT            = 60;
+    case '60MEA10010'    
+        meaChannelMap([8 8], 100,  fullfile(ops.root, 'ks_sorted'), 1); 
+        ops.Nfilt               = 32*16;
+        ops.NchanTOT            = 60;
+end
+%==========================================================================
+ops.minfr_goodchannels = 0.5; %to exclude empoty channels
+%==========================================================================
+% other options	
+ops.chanMap             = fullfile(ops.root, 'ks_sorted','chanMap.mat'); % make this file using createChannelMapFile.m		
+ops.nNeighPC            = 8; % visualization only (Phy): number of channnels to mask the PCs, leave empty to skip (12)		
+ops.nNeigh              = 12; % visualization only (Phy): number of neighboring templates to retain projections of (16)		
+ops.fs                  = metadata.bininfo.fs; %sampling frequency		
+%==========================================================================	
+ops.nt0                 = floor(round(15*ops.fs/1e4)/2)*2+1; %spike template time bins
+ops.nt0min              = floor(round(4*ops.fs/1e4)/2)*2; %spike template time bins
 % other options for controlling the model and optimization		
 ops.Nrank               = 3;    % matrix rank of spike template model (3)		
 ops.nfullpasses         = 6;    % number of complete passes through data during optimization (6)		
@@ -40,9 +63,9 @@ ops.CAR                 = 1;    % option for doing common average referencing
 ops.filter              = false; % don't filter data if already filtered
 ops.ntbuff              = 64; % samples of symmetrical buffer for whitening and spike detection		
 ops.scaleproc           = 200;   % int16 scaling of whitened data		
-ops.NT                  = 64*1024 + ops.ntbuff;% this is the batch size (try decreasing if out of memory) 		
+ops.NT                  = 64*round(1024*ops.fs/1e4) + ops.ntbuff;% this is the batch size (try decreasing if out of memory) 		
 % for GPU should be multiple of 32 + ntbuff
-%==========================================================================		
+%==========================================================================
 % the following options can improve/deteriorate results. 		
 % when multiple values are provided for an option, the first two are beginning and ending anneal values, 		
 % the third is the value used in the final pass. 		
@@ -56,21 +79,16 @@ ops.splitT           = .1;           % lower threshold for splitting (.1)
 ops.freqUpdate       = 80; %ceil(1600 * ops.fs/25e3)      % original was 1600
 ops.muTh             = 5;          % minimum mu ("variance") required per cluster (10)
 ops.minSpks          = 400;         % minimum number of spikes allowed per cluster (200)
-%==========================================================================		
+%==========================================================================
 % options for initializing spikes from data		
 ops.initialize      = 'no';    %'fromData' or 'no'		
 ops.spkTh           = -4;      % spike threshold in standard deviations (4)		
-ops.loc_range       = [5 0];  % ranges to detect peaks; plus/minus in time and channel ([3 1])		
-ops.long_range      = [20 1]; % ranges to detect isolated peaks ([30 6])		
+ops.loc_range       = [round(5*ops.fs/1e4) 0];  % ranges to detect peaks; plus/minus in time and channel ([3 1])		
+ops.long_range      = [round(20*ops.fs/1e4) 1]; % ranges to detect isolated peaks ([30 6])		
 ops.maskMaxChannels = 5;       % how many channels to mask up/down ([5])		
 ops.crit            = .65;     % upper criterion for discarding spike repeates (0.65)		
 ops.nFiltMax        = 100000;   % maximum "unique" spikes to consider (10000)		
 ops.nskip           = 20;
 %==========================================================================		
-% options for posthoc merges (under construction)		
-ops.fracse  = 0.1; % binning step along discriminant axis for posthoc merges (in units of sd)		
-ops.epu     = Inf;
-%==========================================================================
-% maximum RAM the algorithm will try to use for storing whitened data; on Windows it will autodetect.
-ops.ForceMaxRAMforDat   = 0e9; 
-%==========================================================================
+end
+

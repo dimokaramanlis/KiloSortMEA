@@ -1,11 +1,10 @@
-function [uproj] = get_uproj(rez,DATA)
+function [uproj] = get_uproj(rez)
 %UNTITLED2 Summary of this function goes here
 %   Detailed explanation goes here
 
 ops = rez.ops;
 Nchan = ops.Nchan;
 Nbatch      = rez.temp.Nbatch;
-Nbatch_buff = rez.temp.Nbatch_buff;
 
 NT  	= ops.NT;
 batchstart = 0:NT:NT*Nbatch;
@@ -18,13 +17,11 @@ fid = fopen(ops.fproc, 'r');
 i0 = 0;
 
 for ibatch = 1:ops.nskip:Nbatch
-    if ibatch>Nbatch_buff
-        offset = 2 * ops.Nchan*batchstart(ibatch-Nbatch_buff);
-        fseek(fid, offset, 'bof');
-        dat = fread(fid, [NT ops.Nchan], '*int16');
-    else
-        dat = DATA(:,:,ibatch);
-    end
+
+    offset = 2 * ops.Nchan*batchstart(ibatch);
+    fseek(fid, offset, 'bof');
+    dat = fread(fid, [NT ops.Nchan], '*int16');
+ 
     % move data to GPU and scale it
     if ops.GPU
         dataRAW = gpuArray(dat);

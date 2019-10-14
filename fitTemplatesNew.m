@@ -1,9 +1,9 @@
-function rez = fitTemplates(rez, DATA)
+function rez = fitTemplatesNew(rez)
 
 nt0             = rez.ops.nt0;
 
 fprintf('Time %3.0f min. Extracting 3 PCs from data...\n', toc/60)
-wPCA    = extractPCfromSnippets(rez, 3, DATA);
+wPCA    = extractPCfromSnippets(rez, 3);
 rez.ops.wPCA = wPCA;
 
 ops = rez.ops;
@@ -11,7 +11,6 @@ ops = rez.ops;
 rng('default');rng(1);
 
 Nbatch      = rez.temp.Nbatch;
-Nbatch_buff = rez.temp.Nbatch_buff;
 
 Nfilt 	= ops.Nfilt; %256+128;
 
@@ -24,7 +23,7 @@ maxFR 	= ops.maxFR;
 
 Nchan 	= ops.Nchan;
 
-batchstart = 0:NT:NT*(Nbatch-Nbatch_buff);
+batchstart = 0:NT:NT*Nbatch;
 
 delta = NaN * ones(Nbatch, 1);
 iperm = randperm(Nbatch);
@@ -34,7 +33,7 @@ fprintf('Time %3.0f min. Initializing templates...\n', toc/60)
 
 switch ops.initialize
     case 'fromData'
-        uproj = get_uproj(rez, DATA);
+        uproj = get_uproj(rez);
         WUinit = optimizePeaks(ops,uproj);%does a scaled kmeans 
         dWU    = WUinit(:,:,1:Nfilt);
         %             dWU = alignWU(dWU);
@@ -110,9 +109,7 @@ else
     lami = exp(linspace(log(ops.lam(1)), log(ops.lam(2)), Nbatch*ops.nannealpasses));
 end
 
-if Nbatch_buff<Nbatch
-    fid = fopen(ops.fproc, 'r');
-end
+fid = fopen(ops.fproc, 'r');
 
 if ops.showfigures; figure('Position',[200 200 1000 500]); end
 
@@ -193,13 +190,10 @@ while (i<=Nbatch * ops.nfullpasses+1)
     
     % select batch and load from RAM or disk
     ibatch = miniorder(i);
-    if ibatch>Nbatch_buff
-        offset = 2 * ops.Nchan*batchstart(ibatch-Nbatch_buff);
-        fseek(fid, offset, 'bof');
-        dat = fread(fid, [NT ops.Nchan], '*int16');
-    else
-        dat = DATA(:,:,ibatch);
-    end
+    offset = 2 * ops.Nchan*batchstart(ibatch);
+    fseek(fid, offset, 'bof');
+    dat = fread(fid, [NT ops.Nchan], '*int16');
+
     
     % move data to GPU and scale it
     if ops.GPU
@@ -252,10 +246,7 @@ while (i<=Nbatch * ops.nfullpasses+1)
     i = i+1;
 end
 
-% close the data file if it has been used
-if Nbatch_buff<Nbatch
-    fclose(fid);
-end
+fclose(fid); % close the data file if it has been used
 
 if ~ops.GPU
    rez.fW = fW; % save fourier space templates if on CPU

@@ -5,8 +5,10 @@ NpyMatlabPath='C:\Users\admin_lokal\Documents\GitHub\npy-matlab';
 addpath(genpath(KilosortPath)); addpath(genpath(NpyMatlabPath));
 %==========================================================================
 %Run configuration file, take from Github folder and put it somewhere else (together with the master_file)
-run(fullfile(KilosortPath, 'configFiles','TestConfig252MEA.m'));
-create252ChannelMapFile(ops.root); 
+run(fullfile(KilosortPath, 'configFiles','TestConfig60pMEA.m'));
+%create252ChannelMapFile(ops.root); 
+meaChannelMap([10 6], 100, ops.root, 0);
+
 if exist((ops.fproc),'file'); delete(ops.fproc); end
 %==========================================================================
 %Do sorting
