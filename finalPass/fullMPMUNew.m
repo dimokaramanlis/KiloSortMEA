@@ -171,7 +171,7 @@ for ibatch = 1:Nbatch
     end
     
     % print message
-    if ops.verbose && (rem(ibatch, 100) ==1 || ibatch == Nbatch)
+    if ops.verbose && (rem(ibatch, 500) ==1 || ibatch == Nbatch)
         % fprintf(repmat('\b', 1, numel(msg)));
         msg             = sprintf('Time %2.0f min, batch %d/%d,  NTOT %d\n', ...
             toc/60, ibatch,Nbatch, size(st3,1));        

@@ -214,7 +214,7 @@ while (ii<=Nbatch * ops.nfullpasses+1)
     end
     
     % update status
-    if ops.verbose  && (rem(ii,100)==1 || ii == (Nbatch * ops.nfullpasses))
+    if ops.verbose  && (rem(ii,500)==1 || ii == (Nbatch * ops.nfullpasses))
         nsort = sort(round(sum(nspikes,2)), 'descend');
         %%fprintf(repmat('\b', 1, numel(msg)));
         msg = sprintf('Time %2.0f min, batch %d/%d, mu %2.2f, neg-err %2.2f, NTOT %d, n100 %d, n200 %d, n300 %d, n400 %d\n', ...
