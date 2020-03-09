@@ -4,6 +4,8 @@ function batch_run_ks(varargin)
 p = inputParser();
 p.addParameter('mcdatapath', [], @(x) ischar(x));
 p.addParameter('MEAtype', [], @(x) ischar(x));
+p.addParameter('Experimenttype', [], @(x) ischar(x));
+p.addParameter('ChannelstoDelete', [], @(x) ischar(x));
 p.addParameter('AnalyzeMultipleExp', true, @(x) islogical(x));
 p.addParameter('verbose', true, @(x) islogical(x));
 p.parse(varargin{:});
@@ -13,31 +15,42 @@ multiexpflag = p.Results.AnalyzeMultipleExp;
 
 rootpaths = p.Results.mcdatapath;
 meatypes = p.Results.MEAtype;
+exptypes = p.Results.Experimenttype; % option to change initial ops for cell culture, MHK Nov 2019
+chans2del = p.Results.ChannelstoDelete; % option to change initial ops for deleting channels, MHK Dec 2019
+
 if isempty(rootpaths) || ~exist(rootpaths,'dir')
     if multiexpflag
-        [rootpaths, meatypes] = getmultiplepaths(rootpaths);
+        [rootpaths, meatypes, exptypes] = getmultiplepaths(rootpaths);
     else
         rootpaths = uigetdir([],'Select mcd data folder');
         rootpaths = {rootpaths}; % convert to cell to run it seemlessly with batch files
     end 
 end
 %==========================================================================
-KilosortPath ='C:\Users\admin_lokal\Documents\GitHub\KiloSortMEA';
-NpyMatlabPath ='C:\Users\admin_lokal\Documents\GitHub\npy-matlab';
+up = userpath; [pp, ~] = fileparts(up);
+KilosortPath  = fullfile(pp, 'GitHub\KiloSortMEA');
+NpyMatlabPath = fullfile(pp, 'GitHub\npy-matlab');
 addpath(genpath(KilosortPath)); addpath(genpath(NpyMatlabPath));
-%==========================================================================
+%================================================================
 for iexp = 1:numel(rootpaths)
-    
     %----------------------------------------------------------------------
-    if ~exist(fullfile(rootpaths{iexp},'ks_sorted'),'dir')
-        mkdir(fullfile(rootpaths{iexp},'ks_sorted'));
-    end
-    binname = 'alldata.dat'; 
-    binpath = fullfile(rootpaths{iexp},'ks_sorted', binname);
+    kssortedpath = fullfile(rootpaths{iexp},'ks_sorted');
+    % make ks sorted folder
+    if ~exist(kssortedpath,'dir'), mkdir(kssortedpath); end
+    %----------------------------------------------------------------------
+    % make diary
+    diarypath = fullfile(kssortedpath, 'ks_output_logger.txt');
+    if exist(diarypath, 'file'); delete(diarypath); end
+    diary(diarypath); diary on;
+    %----------------------------------------------------------------------
+    binname = 'alldata.dat';
+    binpath = fullfile(kssortedpath, binname);
     %----------------------------------------------------------------------
     metadata = [];
     metadata.root = rootpaths{iexp}; 
     metadata.meatype = meatypes{iexp};
+    metadata.exptypes = exptypes{iexp};
+    %metadata.chans2del = chans2del{iexp};
     %----------------------------------------------------------------------
     % search for ks binary in the root folder or do conversion
     if exist(binpath,'file')
@@ -51,7 +64,13 @@ for iexp = 1:numel(rootpaths)
         ifile = load(bininfopath); bininfo = ifile.bininfo;
         
     else
-        
+        %----------------------------------------------------------------------
+        %read frametimes
+        if ~exist(fullfile(rootpaths{iexp}, 'frametimes'),'dir')
+            fprintf('Extracting frametimings...\n');
+            readFrametimes('mcdatapath', rootpaths{iexp});
+        end
+        %----------------------------------------------------------------------
         disp('Kilosort binary missing, starting conversion...')
         metadata = getmcdmetadata(metadata,verbose);
 
@@ -62,11 +81,12 @@ for iexp = 1:numel(rootpaths)
         
         %move file to the root
         disp('Moving the file back to root...'); tic;
+        save(fullfile(kssortedpath, 'bininfo.mat'),'bininfo', '-v7.3');
         movefile(convpath, fullfile(metadata.root,'ks_sorted'));
-        save(fullfile(metadata.root,'ks_sorted','bininfo.mat'),'bininfo', '-v7.3');
         fprintf('Done! Took %.2f min\n', toc/60);
         
     end
+    %----------------------------------------------------------------------
     metadata.bininfo = bininfo;
     metadata.binpath = binpath;
     metadata.whpath = fullfile('F:\DATA_sorted', 'temp_wh.dat');
@@ -75,19 +95,24 @@ for iexp = 1:numel(rootpaths)
     ops = getKsOptionsMEA(metadata);
     %----------------------------------------------------------------------
     % sort data
-    if ops.GPU; gpuDevice(1); end %initialize GPU (erases any existing GPU arrays)
-    rez        = preprocessDataNew(ops); % preprocess data and extract spikes for initialization
-    rez        = fitTemplatesNew(rez); % fit templates iteratively
-    if ops.GPU; gpuDevice(1); end %initialize GPU (erases any existing GPU arrays)
+    gpuDevice(1); %initialize GPU (erases any existing GPU arrays)
+    rez        = preprocessData(ops); % preprocess data and extract spikes for initialization
+    rez        = fitTemplates(rez); % fit templates iteratively
+    gpuDevice(1);  %initialize GPU (erases any existing GPU arrays)
     rez                = fullMPMUNew(rez);% extract final spike times (overlapping extraction)
     delete(ops.fproc); % remove temporary file
     %----------------------------------------------------------------------
     % save sorted data to the original folder
-    rezToPhyNew(rez, fullfile(ops.root, 'ks_sorted'));     %rezToPhy
+    fprintf('Saving results to Phy  \n')
+    rezToPhy(rez, kssortedpath);     %rezToPhy
     rez.cProj = []; rez.cProjPC = [];
     % save matlab results file 
+    fprintf('Saving final results in rez  \n')
     save(fullfile(ops.root, 'ks_sorted','rez.mat'),'rez', '-v7.3');
-    clear ops rez metadata;
+    clear ops metadata;
+    %----------------------------------------------------------------------
+    diary off;
+    %----------------------------------------------------------------------
 end
 %==========================================================================
 end
@@ -97,7 +122,7 @@ function mtdat = getmcdmetadata(mtdat, verbose)
 stimfiles = dir([mtdat.root,filesep,'*.mcd']);
 mtdat.recording_type = 'mcd';
 if numel(stimfiles) == 0
-    stimfiles = dir([rootpath,filesep,'*.h5']);
+    stimfiles = dir([mtdat.root,filesep,'*.h5']);
     mtdat.recording_type = 'h5';
 end
 
@@ -141,8 +166,7 @@ end
 
 end
 
-
-function [pathlist, meatypelist] = getmultiplepaths(batchtxtpath)
+function [pathlist, meatypelist, exptypelist] = getmultiplepaths(batchtxtpath)
 
 if isempty(batchtxtpath) || ~exist(batchtxtpath,'file')
     [batchpathfile,batchfilepath] = uigetfile('*.txt','Select the text file for all the data folders');
@@ -152,10 +176,15 @@ else
 end
 
 fid = fopen(fullfile(batchfilepath,batchpathfile),'r');
-C = textscan(fid,'%s %s','whitespace','','Delimiter',',');
+C = textscan(fid,'%s %s %s','whitespace','','Delimiter',',');
 fclose(fid);
 
 pathlist = C{1};
 meatypelist = strrep(C{2},' ','');
+if isempty(C{3})
+    exptypelist = {''};
+else
+    exptypelist = C{3};
+end
 
 end

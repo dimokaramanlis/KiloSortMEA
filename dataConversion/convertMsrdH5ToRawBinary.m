@@ -38,14 +38,20 @@ stimsamples=zeros(numel(h5filenames),1);
 for imcd=1:numel(h5filenames)
     h5pathname = [ops.root,filesep,h5filenames{imcd}]; %get mcd path
     stimdata{imcd} = McsHDF5.McsData(h5pathname,cfg);
-    stimsamples(imcd) = size(stimdata{imcd}.Recording{1}.AnalogStream{1}.ChannelDataTimeStamps,2); 
+    stimsamples(imcd) = size(stimdata{imcd}.Recording{1}.AnalogStream{1}.ChannelDataTimeStamps,2);
 end
 bininfo.stimsamples = stimsamples;
 
-H5fileInfo = stimdata{imcd}.Recording{1}.AnalogStream{1}.Info;
+streamtype = cell(size(stimdata{imcd}.Recording{1}.AnalogStream));
+for ii = 1: size(stimdata{imcd}.Recording{1}.AnalogStream,2)
+    streamtype{ii} = stimdata{imcd}.Recording{1}.AnalogStream{ii}.Label;
+end
+filteredstream = (contains(streamtype,'Filter')); % get only the filtered stream
+
+H5fileInfo = stimdata{imcd}.Recording{1}.AnalogStream{filteredstream}.Info;
 NchanTOT = size(H5fileInfo.ChannelID,1);
 bininfo.NchanTOT = NchanTOT;
-fs = stimdata{imcd}.Recording{1}.AnalogStream{2}.getSamplingRate;  % sampling frequency
+fs = stimdata{imcd}.Recording{1}.AnalogStream{filteredstream}.getSamplingRate;  % sampling frequency
 bininfo.fs = fs;
 fprintf('Total length of recording is %2.2f min...\n',sum(stimsamples)/fs/60);
 %--------------------------------------------------------------------------
@@ -54,49 +60,32 @@ labellist = {H5fileInfo.Label};
 chanMap = getChannelMapForRawBinary(labellist,'dataformat','msrd','channelnumber',NchanTOT);
 %--------------------------------------------------------------------------
 fprintf('Saving .mcd data as .dat...\n');
-% chunk size
-maxSamples=64e5;
 
-fidOut= fopen(targetpath, 'W'); %using W (capital), makes writing ~4x faster
+maxSamples = 64e5;% chunk size
+
+fidOut = fopen(targetpath, 'W'); %using W (capital), makes writing ~4x faster
 
 for iFile=1:Nfiles
     
-    h5dat = stimdata{iFile}.Recording{1}.AnalogStream{1};
+    h5dat = stimdata{iFile}.Recording{1}.AnalogStream{filteredstream};
     nsamples = stimsamples(iFile);
     Nchunk = ceil(nsamples/maxSamples);
     
     for iChunk=1:Nchunk
         offset = max(0, (maxSamples * (iChunk-1)));
-        sampstoload=min(nsamples-offset,maxSamples);       
-        %         cfg = McsHDF5.checkParameter(cfg, 'window', McsHDF5.TickToSec([h5dat.ChannelDataTimeStamps(1) ...
-        %                       h5dat.ChannelDataTimeStamps(end)]));
-        %     start_index = find(analogStream.ChannelDataTimeStamps >= McsHDF5.SecToTick(cfg.window(1)),1,'first');
-        %     end_index = find(analogStream.ChannelDataTimeStamps <= McsHDF5.SecToTick(cfg.window(2)),1,'last');
-        %
-        %
-        %   cfg.channel = [5 15]; % channel index 5 to 15
-        cfg.window = double([h5dat.ChannelDataTimeStamps(offset+1) h5dat.ChannelDataTimeStamps(offset+sampstoload)]) / 1e6;
+        sampstoload=min(nsamples-offset,maxSamples);
+        lastidxtoload = offset+sampstoload; % added by MHK to avoid end index crashes
+        if lastidxtoload > size(h5dat.ChannelDataTimeStamps,2), lastidxtoload = size(h5dat.ChannelDataTimeStamps,2); end
+        cfg.window = double([h5dat.ChannelDataTimeStamps(offset+1) h5dat.ChannelDataTimeStamps(lastidxtoload)]) / 1e6;
         % to convert from microseconds to sec for more info check McsHDF5.TickToSec
         
         dat = h5dat.readPartialChannelData(cfg);
-        %         orig_exp = log10(max(abs(dat.ChannelData(:))));
-        %         unit_exp = double(h5dat.Info.Exponent(1));
-        %         multFact = McsHDF5.ExponentToUnit(orig_exp+unit_exp,orig_exp);
-        %converted_data = double(dat.ChannelData) * multFact;
-        %         d = h5dat.getConvertedData(cfg);
-        %         converted_data = (double(dat.ChannelData) - double(h5dat.Info.ADZero(1))) / double(h5dat.Info.ConversionFactor(1));
-        
         dat = int16(dat.ChannelData(chanMap + 1,:));
-        %         nsampcurr=size(dat,2);
-        %         if nsampcurr<sampstoload
-        %             dat(:,nsampcurr+1:int64(sampstoload))=repmat(dat(:,nsampcurr),...
-        %                 1,int64(sampstoload)-nsampcurr);
-        %         end
         fwrite(fidOut, dat, 'int16');
     end
     
     %report status
-    fprintf('Time %3.0f min. Mcd files processed %d/%d \n',toc/60, iFile,Nfiles);
+    fprintf('Time %3.0f min. Mcd files processed %d/%d \n', toc/60, iFile,Nfiles);   
 end
 fclose(fidOut);
 %--------------------------------------------------------------------------

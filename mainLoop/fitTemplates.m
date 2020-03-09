@@ -1,4 +1,4 @@
-function rez = fitTemplatesNew(rez)
+function rez = fitTemplates(rez)
 
 nt0             = rez.ops.nt0;
 
@@ -20,6 +20,7 @@ NT  	= ops.NT;
 Nrank   = ops.Nrank;
 Th 		= ops.Th;
 maxFR 	= ops.maxFR;
+muTh	= getOr(ops, {'muTh'}, ops.Th(2));
 
 Nchan 	= ops.Nchan;
 
@@ -33,7 +34,7 @@ fprintf('Time %3.0f min. Initializing templates...\n', toc/60)
 
 switch ops.initialize
     case 'fromData'
-        uproj = get_uproj(rez);
+        uproj  = get_uproj(rez);
         WUinit = optimizePeaks(ops,uproj);%does a scaled kmeans 
         dWU    = WUinit(:,:,1:Nfilt);
         %             dWU = alignWU(dWU);
@@ -91,9 +92,8 @@ iUpdate = 1:freqUpdate:Nbatch;
 dbins = zeros(100, Nfilt);
 dsum = 0;
 miniorder = repmat(iperm, 1, ops.nfullpasses);
-%     miniorder = repmat([1:Nbatch Nbatch:-1:1], 1, ops.nfullpasses/2);
 
-i = 1; % first iteration
+ii = 1; % first iteration
 
 epu = ops.epu;
 
@@ -115,26 +115,25 @@ if ops.showfigures; figure('Position',[200 200 1000 500]); end
 
 nswitch = [0]; msg = [];
 fprintf('Time %3.0f min. Optimizing templates ...\n', toc/60)
-while (i<=Nbatch * ops.nfullpasses+1)
+while (ii<=Nbatch * ops.nfullpasses+1)
     % set the annealing parameters
-    if i<Nbatch*ops.nannealpasses
-        Th      = Thi(i);
-        lam(:)  = lami(i);
-        pm      = pmi(i);
+    if ii<Nbatch*ops.nannealpasses
+        Th      = Thi(ii);
+        lam(:)  = lami(ii);
+        pm      = pmi(ii);
     end
     
     % some of the parameters change with iteration number
     Params = double([NT Nfilt Th maxFR 10 Nchan Nrank pm epu nt0]);
     
     % update the parameters every freqUpdate iterations
-    if i>1 &&  ismember(rem(i,Nbatch), iUpdate) %&& i>Nbatch
+    if ii>1 &&  ismember(rem(ii,Nbatch), iUpdate) 
         dWU = gather_try(dWU);
         
         % break bimodal clusters and remove low variance clusters
-        if  ops.shuffle_clusters &&...
-                i>Nbatch && rem(rem(i,Nbatch), 4 * freqUpdate)==1    % i<Nbatch*ops.nannealpasses
+        if  ops.shuffle_clusters && ii>Nbatch && rem(rem(ii,Nbatch), 4 * freqUpdate)==1   
             [dWU, dbins, nswitch, nspikes, iswitch] = ...
-                replace_clusters(dWU, dbins,  Nbatch, ops.mergeT, ops.splitT, WUinit, nspikes, ops.muTh, ops.minSpks);
+                replace_clusters(dWU, dbins,  Nbatch, ops.mergeT, ops.splitT, WUinit, nspikes, muTh, ops.minSpks);
         end
         
         dWU = alignWU(dWU, ops);
@@ -145,14 +144,8 @@ while (i<=Nbatch * ops.nfullpasses+1)
         % parameter update
         [W, U, mu, UtU, nu] = decompose_dWU(ops, dWU, Nrank, rez.ops.kcoords);
         
-        if ops.GPU
-            dWU = gpuArray(dWU);
-        else
-            W0 = W;
-            W0(NT, 1) = 0;
-            fW = fft(W0, [], 1);
-            fW = conj(fW);
-        end
+        dWU = gpuArray(dWU);
+
         
         NSP = sum(nspikes,2);
         if ops.showfigures
@@ -181,40 +174,29 @@ while (i<=Nbatch * ops.nfullpasses+1)
             drawnow
         end
         % break if last iteration reached
-        if i>Nbatch * ops.nfullpasses; break; end
+        if ii>Nbatch * ops.nfullpasses; break; end
         
         % record the error function for this iteration
-        rez.errall(ceil(i/freqUpdate))          = nanmean(delta);
+        rez.errall(ceil(ii/freqUpdate))          = nanmean(delta);
         
     end
     
     % select batch and load from RAM or disk
-    ibatch = miniorder(i);
+    ibatch = miniorder(ii);
     offset = 2 * ops.Nchan*batchstart(ibatch);
     fseek(fid, offset, 'bof');
     dat = fread(fid, [NT ops.Nchan], '*int16');
-
     
     % move data to GPU and scale it
-    if ops.GPU
-        dataRAW = gpuArray(dat);
-    else
-        dataRAW = dat;
-    end
+    dataRAW = gpuArray(dat);
     dataRAW = single(dataRAW);
     dataRAW = dataRAW / ops.scaleproc;
     
     % project data in low-dim space
     data = dataRAW * U(:,:);
     
-    if ops.GPU
-        % run GPU code to get spike times and coefficients
-        [dWU, ~, id, x,Cost, nsp] = ...
-            mexMPregMU(Params,dataRAW,W,data,UtU,mu, lam .* (20./mu).^2, dWU, nu);
-    else
-        [dWU, ~, id, x,Cost, nsp] = ...
-            mexMPregMUcpu(Params,dataRAW,fW,data,UtU,mu, lam .* (20./mu).^2, dWU, nu, ops);
-    end
+    % run GPU code to get spike times and coefficients
+    [dWU, ~, id, x,Cost, nsp] = mexMPregMU(Params,dataRAW,W,data,UtU,mu, lam .* (20./mu).^2, dWU, nu);
     
     dbins = .9975 * dbins;  % this is a hard-coded forgetting factor, needs to become an option
     if ~isempty(id)
@@ -232,25 +214,23 @@ while (i<=Nbatch * ops.nfullpasses+1)
     end
     
     % update status
-    if ops.verbose  && rem(i,100)==1
+    if ops.verbose  && (rem(ii,100)==1 || ii == (Nbatch * ops.nfullpasses))
         nsort = sort(round(sum(nspikes,2)), 'descend');
-        fprintf(repmat('\b', 1, numel(msg)));
+        %%fprintf(repmat('\b', 1, numel(msg)));
         msg = sprintf('Time %2.0f min, batch %d/%d, mu %2.2f, neg-err %2.2f, NTOT %d, n100 %d, n200 %d, n300 %d, n400 %d\n', ...
-            toc/60, i,Nbatch* ops.nfullpasses,nanmean(mu(:)), nanmean(delta), round(sum(nsort)), ...
+            toc/60, ii,Nbatch* ops.nfullpasses,nanmean(mu(:)), nanmean(delta), round(sum(nsort)), ...
             nsort(min(size(W,2), 100)), nsort(min(size(W,2), 200)), ...
             nsort(min(size(W,2), 300)), nsort(min(size(W,2), 400)));
         fprintf(msg);
     end
     
     % increase iteration counter
-    i = i+1;
+    ii = ii+1;
 end
 
 fclose(fid); % close the data file if it has been used
 
-if ~ops.GPU
-   rez.fW = fW; % save fourier space templates if on CPU
+rez.dWU      = gather_try(dWU);
+rez.nspikes  = nspikes;
+
 end
-rez.dWU               = gather_try(dWU);
-rez.nspikes               = nspikes;
-% %%

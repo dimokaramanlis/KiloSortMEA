@@ -5,6 +5,7 @@ twind = 0;
 NchanTOT = ops.NchanTOT;
 NT = ops.NT;
 Nchan = numel(chanMap);
+lrange = getOr(ops, {'long_range'}, [30 6]);
 
 % load data into patches, filter, compute covariance
 if isfield(ops,'fslow') && ops.fslow<ops.fs/2 && ops.filter
@@ -41,28 +42,27 @@ while ibatch<=Nbatch
     
     % subtract the mean from each channel
     dataRAW = dataRAW - mean(dataRAW, 1);
-    
+   
+    % CAR, common average referencing by median
+    if getOr(ops, 'CAR', 1)
+        dataRAW = dataRAW - median(dataRAW, 2);
+    end
+   
     if ops.filter
         datr = filter(b1, a1, dataRAW);
         datr = flipud(datr);
         datr = filter(b1, a1, datr);
         datr = flipud(datr);
     else
-        datr=dataRAW;
+        datr = dataRAW;
     end
-    
 
-    % CAR, common average referencing by median
-    if getOr(ops, 'CAR', 1)
-        datr = datr - median(datr, 2);
-    end
-    
-   
     % determine any threshold crossings
-    datr = datr./std(datr,1,1);
+    %datr = datr./std(datr,1,1);
+    datr = datr./mad(datr, 1, 1);
     
-    mdat = my_min(datr, 30, 1);
-    ind = find(datr<mdat+1e-3 & datr<ops.spkTh);
+    mdat = my_min(datr, lrange(1), 1);
+    ind = find(datr<mdat+1e-3 & datr<ops.madTh);
     [xi, xj] = ind2sub(size(datr), ind);
     xj(xi<ops.nt0 | xi>NT-ops.nt0) = [];
     if k+numel(xj)>numel(ich)
@@ -72,19 +72,18 @@ while ibatch<=Nbatch
     
     k = k + numel(xj);
     
-    ibatch = ibatch + ceil(Nbatch/100);
-    ttime = ttime + size(datr,1)/ops.fs;    
+    ibatch = ibatch + ceil(Nbatch/100); % skip every 100 batches
+    ttime = ttime + size(datr,1)/ops.fs; % keep track of total time where we took spikes from    
 end
 fclose(fid);
 
 ich = ich(1:k);
 
-nc = histcounts(ich, .5 + [0:Nchan]);
-nc = nc/ttime;
+nc = histcounts(ich, .5 + [0:Nchan]); % count how many spikes each channel got
+nc = nc/ttime; % divide by total time to get firing rate
 
 % igood = nc>.1;
-igood = nc>=getOr(ops, 'minfr_goodchannels', .5);
-% igood([1:200 210:end]) = 0;
+igood = nc>=getOr(ops, 'minfr_goodchannels', .1);
 
 % chanMap = chanMap(nc>.1);
 fprintf('found %d threshold crossings in %2.2f seconds of data \n', k, ttime)

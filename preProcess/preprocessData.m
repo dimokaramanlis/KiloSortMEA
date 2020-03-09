@@ -1,11 +1,9 @@
-function [rez] = preprocessDataNew(ops)
+function rez = preprocessData(ops)
 tic;
 
 ops.nt0 	= getOr(ops, {'nt0'}, 61);
 ops.filter 	= getOr(ops, {'filter'}, true);
-
-
-
+ops.nt0min  = getOr(ops, 'nt0min', ceil(20 * ops.nt0/61)); % time sample where the negative peak should be aligned
 
 NT       = ops.NT ;
 NchanTOT = ops.NchanTOT;
@@ -30,16 +28,15 @@ if getOr(ops, 'minfr_goodchannels', .1)>0
     kcoords = kcoords(igood);
     chanMap = chanMap(igood);
         
-    ops.igood = igood;
+    ops.igood = gather_try(igood);
 else
     ops.igood = true(size(chanMap));
 end
 
-
 ops.Nchan = numel(chanMap);
 ops.Nfilt = floor(getOr(ops, 'nfilt_factor', 6.5) * ops.Nchan /32)*32;
 
-rez.ops         = ops;
+rez.ops    = ops; % memorize ops
 rez.xc = xc;
 rez.yc = yc;
 
@@ -62,8 +59,8 @@ Wrot = get_whitening_matrix(rez);
 
 fprintf('Time %3.0f min. Loading raw data and applying filters... \n', toc/60);
 
-fid     = fopen(ops.fbinary, 'r');
-fidW    = fopen(ops.fproc, 'W');
+fid     = fopen(ops.fbinary, 'r'); % open for reading raw data
+fidW    = fopen(ops.fproc,   'W'); % open for writing processed data
 
 
 msg=[];
@@ -81,12 +78,8 @@ for ibatch = 1:Nbatch
     if nsampcurr<NTbuff
         buff(:, nsampcurr+1:NTbuff) = repmat(buff(:,nsampcurr), 1, NTbuff-nsampcurr);
     end
-
-    if ops.GPU
-        dataRAW = gpuArray(buff);
-    else
-        dataRAW = buff;
-    end
+    
+    dataRAW = gpuArray(buff);
 
     dataRAW = dataRAW';
     dataRAW = single(dataRAW);
@@ -110,17 +103,14 @@ for ibatch = 1:Nbatch
         datr = dataRAW;
     end
 
-    datr = datr(ioffset + (1:NT),:);
-    
-    datr    = datr * Wrot;
-    
-    
-    datcpu  = gather_try(int16(datr));
-    fwrite(fidW, datcpu, 'int16');
+    datr    = datr(ioffset + (1:NT),:); % remove timepoints used as buffers
+    datr    = datr * Wrot; % whiten the data and scale by 200 for int16 range
+    datcpu  = gather(int16(datr)); % convert to int16, and gather on the CPU side
+    fwrite(fidW, datcpu, 'int16'); % write this batch to binary file
     
     % update status
-    if ops.verbose && rem(ibatch,100)==1
-        fprintf(repmat('\b', 1, numel(msg)));
+    if ops.verbose && (rem(ibatch, 100)==1 || ibatch == Nbatch)
+        %fprintf(repmat('\b', 1, numel(msg)));
         msg = sprintf('Time %2.0f min, batch %d/%d\n',toc/60, ibatch,Nbatch);
         fprintf(msg);
     end
@@ -128,10 +118,9 @@ end
 fclose(fid);
 fclose(fidW); 
 
-Wrot = gather_try(Wrot); rez.Wrot = Wrot;
+rez.Wrot    = gather(Wrot); % gather the whitening matrix as a CPU variable
 
 if ops.verbose
-    fprintf('Time %2.0f min. Whitened data written to disk... \n', toc/60);
     fprintf('Time %2.0f min. Preprocessing complete!\n', toc/60);
 end
 
