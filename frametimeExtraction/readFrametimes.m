@@ -78,13 +78,6 @@ for ii = 1:Nstimuli
     end
     stimdat = cell2mat(datcell);
     %----------------------------------------------------------------------
-    % do upsampling
-    if ops.fs == 1e4   
-        upsampfac = 3;  
-        ops.fs =  ops.fs * upsampfac;
-        stimdat = kron(stimdat,ones(upsampfac,1));
-    end  
-    %----------------------------------------------------------------------
     % call frametimings
     [~,ops.filename,~] = fileparts(stimfilenames{1});
     newframetimings(stimdat, ops);
