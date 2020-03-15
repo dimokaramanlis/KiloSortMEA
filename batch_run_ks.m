@@ -99,7 +99,7 @@ for iexp = 1:numel(rootpaths)
     rez        = preprocessData(ops); % preprocess data and extract spikes for initialization
     rez        = fitTemplates(rez); % fit templates iteratively
     gpuDevice(1);  %initialize GPU (erases any existing GPU arrays)
-    rez                = fullMPMUNew(rez);% extract final spike times (overlapping extraction)
+    rez                = fullMPMUNew2(rez);% extract final spike times (overlapping extraction)
     delete(ops.fproc); % remove temporary file
     %----------------------------------------------------------------------
     % save sorted data to the original folder

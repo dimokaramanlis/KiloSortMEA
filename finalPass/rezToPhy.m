@@ -88,8 +88,11 @@ if ~isempty(savePath)
     writeNPY(pcFeatureInds'-1, fullfile(savePath, 'pc_feature_ind.npy'));% -1 for zero indexing
     
     writeNPY(rez.cProj, fullfile(savePath, 'template_features.npy'));
-    writeNPY(rez.cProjPC, fullfile(savePath, 'pc_features.npy'));
-    
+    if rez.ops.lowmem
+         savePrincipalComponentsKS1(rez, fullfile(savePath, 'pc_features.npy'))
+    else
+        writeNPY(rez.cProjPC, fullfile(savePath, 'pc_features.npy'));
+    end
 
     writeNPY(whiteningMatrix,    fullfile(savePath, 'whitening_mat.npy'));
     writeNPY(whiteningMatrixInv, fullfile(savePath, 'whitening_mat_inv.npy'));

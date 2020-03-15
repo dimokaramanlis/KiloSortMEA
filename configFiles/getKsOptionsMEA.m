@@ -14,7 +14,7 @@ ops.fbinary     = metadata.binpath;
 ops.fproc       = metadata.whpath;
 % maximum RAM the algorithm will try to use for storing whitened data; on Windows it will autodetect.
 ops.ForceMaxRAMforDat   = 0e9;
-
+ops.lowmem = 1; % use low memory
 ops.epu = Inf;
 ops.fracse = 0.1;
 %=========================================================================
@@ -40,7 +40,7 @@ switch metadata.meatype
         ops.NchanTOT            = 60;
     case '60pMEA10030'
         meaChannelMap([10 6], 100,  fullfile(ops.root, 'ks_sorted'), 0);
-        ops.nfilt_factor        = 8;
+        ops.nfilt_factor        = 9;
         ops.NchanTOT            = 60;
     case '60MEA20030'
         meaChannelMap([8 8], 200,  fullfile(ops.root, 'ks_sorted'), 1);
