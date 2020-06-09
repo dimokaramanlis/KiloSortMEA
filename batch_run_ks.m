@@ -83,6 +83,8 @@ for iexp = 1:numel(rootpaths)
         disp('Moving the file back to root...'); tic;
         save(fullfile(kssortedpath, 'bininfo.mat'),'bininfo', '-v7.3');
         movefile(convpath, fullfile(metadata.root,'ks_sorted'));
+        % write text file for eventmarkers used in Phy amplitude view
+        ksEventMarkers(kssortedpath, metadata.root);
         fprintf('Done! Took %.2f min\n', toc/60);
         
     end
@@ -181,6 +183,9 @@ fclose(fid);
 
 pathlist = C{1};
 meatypelist = strrep(C{2},' ','');
+if size(C{1},1) > 1 && size(C{1},1) > size(C{3},1) % this to fill up last empty text
+    C{3}{size(C{1},1)} = ''; 
+end
 if isempty(C{3})
     exptypelist = {''};
 else

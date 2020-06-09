@@ -64,7 +64,7 @@ ops.Show = params.Show; ops.Save = params.Save;
 
 for ii = 1:Nstimuli
     
-    fprintf('Reading data for stimulus %d...\n',ii); tic;
+    fprintf('Reading data for stimulus %d... ',ii); tic;
     stimfilenames = datafilenames(stimids == ii);
     %----------------------------------------------------------------------
     %get data
@@ -145,7 +145,14 @@ function [mcddat, fs, stimsamples] = readH5analongData(dp, mcname)
 h5file = fullfile(dp,mcname); %get h5 path
 cfg = []; cfg.dataType = 'single';
 stimdata = McsHDF5.McsData(h5file,cfg);
-h5dat = stimdata.Recording{1}.AnalogStream{2};
+
+streamtype = cell(size(stimdata.Recording{1}.AnalogStream));
+for ii = 1: size(stimdata.Recording{1}.AnalogStream,2)
+    streamtype{ii} = stimdata.Recording{1}.AnalogStream{ii}.Label;
+end
+analogstream = ~(contains(streamtype,'Filter')); % get only the filtered stream
+
+h5dat = stimdata.Recording{1}.AnalogStream{analogstream};
 toVoltsFac = 10^double(h5dat.Info.Exponent(1));
 mcddat = h5dat.ChannelData(1,:)*toVoltsFac;
 fs = round(h5dat.getSamplingRate);

@@ -64,21 +64,24 @@ for iunit = 1:Nunits
 
     % read
     fidunit_pc = fopen(unitpath_pc, 'r');
-    unitpcs = fread(fidunit_pc,'*single');
+    unitpcs = fread(fidunit_pc, [Nrank*nNeighPC nspks(iunit)],'*single');
     fclose(fidunit_pc);
     
-    unitpcs = reshape(unitpcs, nNeighPC, Nrank, []);
-    assert( size(unitpcs, 3) == nspks(iunit));
+    unitpcs = unitpcs';
+    unitpcs = unitpcs(csort, :);
+    unitpcs = reshape(unitpcs, [nspks(iunit) nNeighPC, Nrank]);
+    %unitpcs = reshape(unitpcs, Nrank, nNeighPC, []);
+    %assert( size(unitpcs, 3) == nspks(iunit));
 
-     % change parts
-    unitpcs    = permute(unitpcs, [3 2 1]);
-    unitpcs    = unitpcs(csort,:,:);
     
     [~, isortNeigh]         = sort(rez.iNeighPC(:, iunit), 'ascend');
     OneToNpc                = 1:nNeighPC;
     OneToNpc(isortNeigh)    = OneToNpc;
     
-    unitpcs   = unitpcs(:, :, OneToNpc);
+    unitpcs   = unitpcs(:, OneToNpc, :);
+    
+     % change parts
+    unitpcs    = permute(unitpcs, [1 3 2]);
     
     % write again
     fidunit_pc = fopen(unitpath_pc, 'W');

@@ -89,7 +89,7 @@ ops.shuffle_clusters = 1;            % allow merges and splits during optimizati
 ops.mergeT           = .1;           % upper threshold for merging (.1)
 ops.splitT           = .1;           % lower threshold for splitting (.1)
 ops.freqUpdate       = 100;          %ceil(1600 * ops.fs/25e3)      % original was 1600
-ops.minSpks          = 400;          % minimum number of spikes allowed per cluster (200)
+ops.minSpks          = 800;          % minimum number of spikes allowed per cluster (200)
 %==========================================================================
 % options for initializing spikes from data
 ops.initialize      = 'fromData';    %'fromData' or 'no'

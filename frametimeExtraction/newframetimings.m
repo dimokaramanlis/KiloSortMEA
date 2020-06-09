@@ -14,8 +14,8 @@ fs = ops.fs;
 plotint = ops.plotint; plotinclude = ops.plotinclude; %in s
 signal = signal(:);
 
-T = length(signal)/fs;
-fprintf('Total recording time: %ds\n', round(T));
+%T = length(signal)/fs;
+%fprintf('Total recording time: %ds\n', round(T));
 %==========================================================================
 % detect frame signals by threshold crossings
 nsmooth = round(plotint*fs);
