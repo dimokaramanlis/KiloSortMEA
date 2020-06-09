@@ -34,19 +34,23 @@ cfg = [];
 cfg.dataType = 'raw';
 
 stimdata = cell(numel(h5filenames),1);
-stimsamples=zeros(numel(h5filenames),1);
+
 for imcd=1:numel(h5filenames)
     h5pathname = [ops.root,filesep,h5filenames{imcd}]; %get mcd path
     stimdata{imcd} = McsHDF5.McsData(h5pathname,cfg);
-    stimsamples(imcd) = size(stimdata{imcd}.Recording{1}.AnalogStream{1}.ChannelDataTimeStamps,2);
 end
-bininfo.stimsamples = stimsamples;
 
 streamtype = cell(size(stimdata{imcd}.Recording{1}.AnalogStream));
 for ii = 1: size(stimdata{imcd}.Recording{1}.AnalogStream,2)
     streamtype{ii} = stimdata{imcd}.Recording{1}.AnalogStream{ii}.Label;
 end
 filteredstream = (contains(streamtype,'Filter')); % get only the filtered stream
+
+stimsamples=zeros(numel(h5filenames),1);
+for imcd=1:numel(h5filenames)
+    stimsamples(imcd) = size(stimdata{imcd}.Recording{1}.AnalogStream{filteredstream}.ChannelDataTimeStamps,2);
+end
+bininfo.stimsamples = stimsamples;
 
 H5fileInfo = stimdata{imcd}.Recording{1}.AnalogStream{filteredstream}.Info;
 NchanTOT = size(H5fileInfo.ChannelID,1);
@@ -75,7 +79,6 @@ for iFile=1:Nfiles
         offset = max(0, (maxSamples * (iChunk-1)));
         sampstoload=min(nsamples-offset,maxSamples);
         lastidxtoload = offset+sampstoload; % added by MHK to avoid end index crashes
-        if lastidxtoload > size(h5dat.ChannelDataTimeStamps,2), lastidxtoload = size(h5dat.ChannelDataTimeStamps,2); end
         cfg.window = double([h5dat.ChannelDataTimeStamps(offset+1) h5dat.ChannelDataTimeStamps(lastidxtoload)]) / 1e6;
         % to convert from microseconds to sec for more info check McsHDF5.TickToSec
         
