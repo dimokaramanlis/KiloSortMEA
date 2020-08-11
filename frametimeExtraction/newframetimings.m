@@ -19,7 +19,7 @@ signal = signal(:);
 %==========================================================================
 % detect frame signals by threshold crossings
 nsmooth = round(plotint*fs);
-smooths = smoothdata(signal, 'gaussian', nsmooth);
+smooths = smoothdata(signal, 'gaussian', nsmooth + 1);
 Thres = madTh * mad(diff(smooths));
 
 fonsets  = find( diff(diff(smooths) >  Thres) <0 ) + 1;

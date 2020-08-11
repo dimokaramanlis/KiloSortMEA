@@ -5,7 +5,6 @@ p = inputParser();
 p.addParameter('mcdatapath', [], @(x) ischar(x));
 p.addParameter('MEAtype', [], @(x) ischar(x));
 p.addParameter('Experimenttype', [], @(x) ischar(x));
-p.addParameter('ChannelstoDelete', [], @(x) ischar(x));
 p.addParameter('AnalyzeMultipleExp', true, @(x) islogical(x));
 p.addParameter('verbose', true, @(x) islogical(x));
 p.parse(varargin{:});
@@ -16,7 +15,6 @@ multiexpflag = p.Results.AnalyzeMultipleExp;
 rootpaths = p.Results.mcdatapath;
 meatypes = p.Results.MEAtype;
 exptypes = p.Results.Experimenttype; % option to change initial ops for cell culture, MHK Nov 2019
-chans2del = p.Results.ChannelstoDelete; % option to change initial ops for deleting channels, MHK Dec 2019
 
 if isempty(rootpaths) || ~exist(rootpaths,'dir')
     if multiexpflag
@@ -50,7 +48,6 @@ for iexp = 1:numel(rootpaths)
     metadata.root = rootpaths{iexp}; 
     metadata.meatype = meatypes{iexp};
     metadata.exptypes = exptypes{iexp};
-    %metadata.chans2del = chans2del{iexp};
     %----------------------------------------------------------------------
     % search for ks binary in the root folder or do conversion
     if exist(binpath,'file')

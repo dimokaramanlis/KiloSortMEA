@@ -25,6 +25,7 @@ ops.whiteningRange      = 32; % how many channels to whiten together (Inf for wh
 %=========================================================================
 % channel-specific options
 ops.meatype     = metadata.meatype;
+updateops = false;
 switch metadata.meatype
     case '252MEA10030'
         meaChannelMap([16 16], 100,  fullfile(ops.root, 'ks_sorted'), 1);
@@ -46,6 +47,16 @@ switch metadata.meatype
         meaChannelMap([8 8], 200,  fullfile(ops.root, 'ks_sorted'), 1);
         ops.nfilt_factor        = 8;
         ops.NchanTOT            = 60;
+    case '60mea20030cellculture'
+        meaChannelMap([8 8], 200,  fullfile(ops.root, 'ks_sorted'), 1);
+        ops.nfilt_factor        = 5;
+        ops.NchanTOT            = 60;
+        updateops = true;
+    case '60mea20030hippocampus'
+        meaChannelMap([8 8], 200,  fullfile(ops.root, 'ks_sorted'), 1);
+        ops.nfilt_factor        = 4;
+        ops.NchanTOT            = 60;
+        updateops = true;
     case '60MEA10010'
         meaChannelMap([8 8], 100,  fullfile(ops.root, 'ks_sorted'), 1);
         ops.nfilt_factor        = 8;
@@ -101,7 +112,7 @@ ops.crit            = .65;     % upper criterion for discarding spike repeates (
 ops.nFiltMax        = 100000;   % maximum "unique" spikes to consider (10000)
 ops.nskip           = 20;
 %==========================================================================
-if not(isempty(metadata.exptypes))
+if updateops
     ops = updateOpsMEA(metadata, ops);
 end
 end
