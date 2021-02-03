@@ -31,6 +31,10 @@ switch metadata.meatype
         meaChannelMap([16 16], 100,  fullfile(ops.root, 'ks_sorted'), 1);
         ops.nfilt_factor        = 8;
         ops.NchanTOT            = 252;
+    case '252MEA6010'
+        meaChannelMap([16 16], 60,  fullfile(ops.root, 'ks_sorted'), 1);
+        ops.nfilt_factor        = 7;
+        ops.NchanTOT            = 252;
     case '252MEA20030'
         meaChannelMap([16 16], 200,  fullfile(ops.root, 'ks_sorted'), 1);
         ops.nfilt_factor        = 8;

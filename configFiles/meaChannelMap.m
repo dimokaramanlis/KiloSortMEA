@@ -36,8 +36,12 @@ kcoords = ones(size(xcoords));
 
 %-------------------------------------------------------------------------- 
 if nargin > 2
-    save(fullfile(savingpath, 'chanMap.mat'), 'chanMap',...
-        'chanMap0ind','connected', 'xcoords', 'ycoords', 'kcoords')
+    if not(exist(fullfile(savingpath, 'chanMap.mat'),'file'))
+        save(fullfile(savingpath, 'chanMap.mat'), 'chanMap',...
+            'chanMap0ind','connected', 'xcoords', 'ycoords', 'kcoords');
+    else
+        disp('we found channel map from previous run!');
+    end
 end
 
 channelmap.chanMap = chanMap;

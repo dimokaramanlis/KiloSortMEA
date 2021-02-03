@@ -35,8 +35,8 @@ assert(numel(foffsets) == numel(fonsets))
 nsamps   = floor(plotint*fs);
 shapeint = -nsamps:nsamps;
 
-alfon  = signal(fonsets + shapeint);
-aloff  = signal(foffsets + shapeint);
+alfon  = signal(fonsets(:) + shapeint);
+aloff  = signal(foffsets(:) + shapeint);
 
 [~,ion]  = max(diff(alfon,[],2),[],2);
 [~,ioff] = min(diff(aloff,[],2),[],2);
