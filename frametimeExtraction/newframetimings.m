@@ -29,7 +29,12 @@ foffsets = find( diff(diff(smooths) < -Thres) >0 ) + 1;
 if numel(foffsets)<numel(fonsets)
     fonsets = fonsets(1:end-1);
 end
-assert(numel(foffsets) == numel(fonsets))
+try
+    assert(numel(foffsets) == numel(fonsets))
+catch ME
+    disp(ME.message);
+    warning('mismatch numbers for On and Off frames, check out!');
+end
 %==========================================================================
 % fix smoothing-induced shift
 nsamps   = floor(plotint*fs);
@@ -67,33 +72,35 @@ if ops.Show && ~isempty(fonsets)
     alignedpulsesoff = signal(foffplot+shapeint);
 
     ymax = max([alignedpulseson(:);alignedpulsesoff(:)]);
+    if ymax <= 0, ymax = 1; end;    if ymax<0.2, r=2; else, r=1; end
 
     mf = figure('Position', [100 100 1600 850],'color','w','Visible','off');    
     subplot(2,2, 1)
     line(tshape, alignedpulseson', 'LineStyle','-','Color',[0 0.45 1 0.6]);
     xlabel('Time from pulse onset (ms)'); xlim(plotint * 1e3* [-1 1]);
-    ylabel('Voltage (V)'); ylim([0 ymax+0.025]);
+    ylabel('Voltage (V)'); 
     ax = gca; ax.Box = 'off';       ax.TickDir = 'out';     pbaspect([2 1 1]);
-    xticks(-10:0.1:10);        yticks(round(double([0 ymax/2 ymax]),1));      title('onset');
-
+    xticks(-10:0.1:10);        yticks(round(double([0 ymax/2 ymax]),r));      title('onset');
+    ylim([0 round(ymax+0.055, r)]);
+    
     subplot(2,2, 2)
     line(tshape, alignedpulsesoff', 'LineStyle','-','Color',[0 0.45 1 0.6]);
     xlabel('Time from pulse offset (ms)'); xlim(plotint * 1e3* [-1 1]);
-    ylabel('Voltage (V)'); ylim([0 ymax+0.025]);
+    ylabel('Voltage (V)');ylim([0 round(ymax+0.05, r)]);
     ax = gca; ax.Box = 'off';       ax.TickDir = 'out';     pbaspect([2 1 1]);
-    xticks(-10:0.1:10);        yticks(round(double([0 ymax/2 ymax]),1));      title('offset');
+    xticks(-10:0.1:10);        yticks(round(double([0 ymax/2 ymax]),r));      title('offset');
     
     subplot(2,2, [3 4])
     tonsets = (fonplot-1)/fs; toffsets = (foffplot-1)/fs;
     ax = gca; ax.Box = 'off';       ax.TickDir = 'out';
     xlabel('Time (s)'); xlim([tplot(1) tplot(end)]);
-    ylabel('Voltage (V)'); ylim([0 ymax+0.025]);
+    ylabel('Voltage (V)'); ylim([0 round(ymax+0.05, r)]);
     line(tplot, signalplot,'LineStyle','-', 'Color', [0 0.4 1 0.6],'Marker','none');
     line(toffsets, ypulses, 'LineStyle','none', 'Color', 'm','Marker','o');
     line(tonsets, ypulses, 'LineStyle','none', 'Color', 'r','Marker','x');
     title('onsets: x, offsets: o');
     pbaspect([5 1 1]);
-    yticks(round(double([0 ymax/2 ymax]),1));
+    yticks(round(double([0 ymax/2 ymax]),r));
 
     %savepngFast(mf, ops.exportpath,[ops.filename '_frametimings'], 400);
     set(mf,'PaperPositionMode','auto')

@@ -33,6 +33,10 @@ switch metadata.meatype
         ops.NchanTOT            = 252;
     case '252MEA6010'
         meaChannelMap([16 16], 60,  fullfile(ops.root, 'ks_sorted'), 1);
+        ops.nfilt_factor        = 8;
+        ops.NchanTOT            = 252;
+     case '252MEA3008'
+        meaChannelMap([16 16], 30,  fullfile(ops.root, 'ks_sorted'), 1);
         ops.nfilt_factor        = 7;
         ops.NchanTOT            = 252;
     case '252MEA20030'
@@ -64,6 +68,10 @@ switch metadata.meatype
     case '60MEA10010'
         meaChannelMap([8 8], 100,  fullfile(ops.root, 'ks_sorted'), 1);
         ops.nfilt_factor        = 8;
+        ops.NchanTOT            = 60;
+    case {'60Hexa', '60hexa'}
+        hexaChannelMap(fullfile(ops.root, 'ks_sorted'));
+        ops.nfilt_factor        = 7;
         ops.NchanTOT            = 60;
 end
 %==========================================================================

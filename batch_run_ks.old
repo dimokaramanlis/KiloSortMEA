@@ -33,9 +33,11 @@ addpath(genpath(KilosortPath)); addpath(genpath(NpyMatlabPath));
 for iexp = 1:numel(rootpaths)
     %----------------------------------------------------------------------
     kssortedpath = fullfile(rootpaths{iexp},'ks_sorted');
+    % make ks sorted folder
+    if ~exist(kssortedpath,'dir'), mkdir(kssortedpath); end
     %----------------------------------------------------------------------
     % make diary
-    diarypath = fullfile(rootpaths{iexp}, 'ks_output_logger.txt');
+    diarypath = fullfile(kssortedpath, 'ks_output_logger.txt');
     if exist(diarypath, 'file'); delete(diarypath); end
     diary(diarypath); diary on;
     %----------------------------------------------------------------------
@@ -60,28 +62,29 @@ for iexp = 1:numel(rootpaths)
         
     else
         %----------------------------------------------------------------------
+        %read frametimes
+        if ~exist(fullfile(rootpaths{iexp}, 'frametimes'),'dir')
+            fprintf('Extracting frametimings...\n');
+            readFrametimes('mcdatapath', rootpaths{iexp});
+        end
+        %----------------------------------------------------------------------
         disp('Kilosort binary missing, starting conversion...')
         metadata = getmcdmetadata(metadata,verbose);
-        
+
         % do conversion
-        bininfo = convertToRawBinary(metadata);
-        save(fullfile(kssortedpath, 'bininfo.mat'),'bininfo', '-v7.3');
+        convpath = fullfile('G:\DATA_sorted', binname);
+        bininfo = convertToKsRawBinary(metadata, convpath);
         disp('Conversion completed!');
         
+        %move file to the root
+        disp('Moving the file back to root...'); tic;
+        save(fullfile(kssortedpath, 'bininfo.mat'),'bininfo', '-v7.3');
+        movefile(convpath, fullfile(metadata.root,'ks_sorted'));
         % write text file for eventmarkers used in Phy amplitude view
         ksEventMarkers(kssortedpath, metadata.root);
         fprintf('Done! Took %.2f min\n', toc/60);
         
     end
-    
-    %----------------------------------------------------------------------
-    %read frametimes
-    if ~exist(fullfile(rootpaths{iexp}, 'frametimes'),'dir')
-        fprintf('Extracting frametimings...\n');
-        readFrametimesNew('mcdatapath', rootpaths{iexp}, 'Nchan', bininfo.NchanTOT, ...
-            'fs', bininfo.fs, 'convfac', bininfo.convfac);
-    end
-
     %----------------------------------------------------------------------
     metadata.bininfo = bininfo;
     metadata.binpath = binpath;
