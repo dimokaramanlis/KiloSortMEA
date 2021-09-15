@@ -5,19 +5,32 @@ function [bininfo] = convertToRawBinary(ops)
 converterpath = which('ConvertDatMEA.exe');
 hexapath      = which('hexaorder.txt');
 %--------------------------------------------------------------------------
-argstr =  ['-w150 -h40 -nowait ' ops.root];
+win_width = 150;
+win_height = 40;
+argstr = sprintf('-w%i -h%i -nowait %s', win_width, win_height, ops.root);
 
 if any(strcmp(ops.meatype, {'60Hexa', '60hexa'}))
     argstr = [argstr ' -channelorder ' hexapath];
 end
 
 fprintf('Saving .mcd data as .dat...\n'); tic;
-proc = System.Diagnostics.Process();
-proc.StartInfo.FileName = converterpath;
-proc.StartInfo.Arguments = argstr; % Default window size is 150 columns and 40 rows
-proc.Start();
-proc.WaitForExit(); % Wait for the process to end
-proc.ExitCode %Display exit code
+%--------------------------------------------------------------------------
+if ispc
+    % Windows part 
+    proc = System.Diagnostics.Process();
+    proc.StartInfo.FileName = converterpath;
+    proc.StartInfo.Arguments = argstr; % Default window size is 150 columns and 40 rows
+    proc.Start();
+    proc.WaitForExit(); % Wait for the process to end
+    proc.ExitCode %Display exit code
+elseif isunix
+    % Ubuntu
+    system(sprintf('gnome-terminal --wait --geometry=%ix%i -- mono %s %s',...
+        win_width, win_height, converterpath, argstr)) %Display exit code
+else
+    error('OS not supported');
+end
+%--------------------------------------------------------------------------
 fprintf('Conversion took %3.0f min...\n', toc/60);
 %--------------------------------------------------------------------------
 % read bininfo.txt

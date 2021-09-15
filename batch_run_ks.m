@@ -26,8 +26,8 @@ if isempty(rootpaths) || ~exist(rootpaths,'dir')
 end
 %==========================================================================
 up = userpath; [pp, ~] = fileparts(up);
-KilosortPath  = fullfile(pp, 'GitHub\KiloSortMEA');
-NpyMatlabPath = fullfile(pp, 'GitHub\npy-matlab');
+KilosortPath  = fullfile(pp, 'GitHub', 'KiloSortMEA');
+NpyMatlabPath = fullfile(pp, 'GitHub', 'npy-matlab');
 addpath(genpath(KilosortPath)); addpath(genpath(NpyMatlabPath));
 %================================================================
 for iexp = 1:numel(rootpaths)
