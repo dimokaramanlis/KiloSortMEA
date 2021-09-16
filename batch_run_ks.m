@@ -118,6 +118,10 @@ function mtdat = getmcdmetadata(mtdat, verbose)
 stimfiles = dir([mtdat.root,filesep,'*.mcd']);
 mtdat.recording_type = 'mcd';
 if numel(stimfiles) == 0
+    stimfiles = dir([mtdat.root,filesep,'*.msrd']);
+    mtdat.recording_type = 'msrd';
+end
+if numel(stimfiles) == 0
     stimfiles = dir([mtdat.root,filesep,'*.h5']);
     mtdat.recording_type = 'h5';
 end
