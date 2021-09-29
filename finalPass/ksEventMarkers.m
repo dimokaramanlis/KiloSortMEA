@@ -40,9 +40,14 @@ ops = p.Results;
 
 bininfo = struct2array(load([bininfopath,'/bininfo.mat']));
 
-% try mcd first, if not try h5
+% try mcd first, then msrd, and then try h5
 mcnames = dir([mcpath,filesep,'*.mcd']);
 formname = '.mcd';
+
+if isempty(mcnames)
+    mcnames = dir([mcpath,filesep,'*.msrd']);
+    formname = '.msrd';
+end
 
 if isempty(mcnames)
     mcnames = dir([mcpath,filesep,'*.h5']);
