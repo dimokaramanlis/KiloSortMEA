@@ -43,9 +43,21 @@ tic;
 proc = System.Diagnostics.Process();
 proc.StartInfo.FileName = fullfile(exepath, 'ConvertDatMEA.exe');
 proc.StartInfo.Arguments =  ['-nowait -w150 -h40 ' dp]; % Default window size is 150 columns and 40 rows
+proc.StartInfo.UseShellExecute = false; % Necessary for redirecting
+proc.StartInfo.RedirectStandardError = true; % Redirect stderr
 proc.Start();
 proc.WaitForExit(); % Wait for the process to end
 proc.ExitCode %Display exit code
+
+% Display any errors from stderr
+out = proc.StandardError.ReadToEndAsync;
+if (~isempty(out.Result))
+    err = erase(string(Trim(out.Result)), char(13));
+    err = strsplit(err, newline);
+    for e = err
+        warning(e);
+    end
+end
 toc;
 
 

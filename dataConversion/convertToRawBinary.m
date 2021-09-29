@@ -16,22 +16,57 @@ end
 fprintf('Saving .mcd data as .dat...\n'); tic;
 %--------------------------------------------------------------------------
 if ispc
-    % Windows part 
+    % Windows 
     proc = System.Diagnostics.Process();
     proc.StartInfo.FileName = converterpath;
     proc.StartInfo.Arguments = argstr; % Default window size is 150 columns and 40 rows
+    proc.StartInfo.UseShellExecute = false; % Necessary for redirecting
+    proc.StartInfo.RedirectStandardError = true; % Redirect stderr
     proc.Start();
     proc.WaitForExit(); % Wait for the process to end
-    proc.ExitCode %Display exit code
+    exitCode = proc.ExitCode;
+
+    % Display any errors from stderr
+    out = proc.StandardError.ReadToEndAsync;
+    if (~isempty(out.Result))
+        err = erase(string(Trim(out.Result)), char(13));
+        err = strsplit(err, newline);
+        for e = err
+            warning(e);
+        end
+    end   
 elseif isunix
-    % Ubuntu
-    system(sprintf('gnome-terminal --wait --geometry=%ix%i -- mono %s %s',...
-        win_width, win_height, converterpath, argstr)) %Display exit code
+    % Linux
+    %  Requires: gnome-terminal and mono-runtime
+    stderrfile = tempname;
+    shellfile = tempname;
+    sfi = fopen(shellfile,'wt');
+    fprintf(sfi, 'mono %s %s 2>%s', converterpath, argstr, stderrfile);
+    fclose(sfi);
+    exitCode = system(...
+        sprintf('gnome-terminal --wait --geometry=%ix%i -- bash %s',...
+        win_width, win_height, shellfile));
+    delete(shellfile);
+    
+    % Display any erros from stderr
+    if isfile(stderrfile)
+        err = erase(string(fileread(stderrfile)), char(13));
+        err = split(err, newline);
+        for e = err'
+            warning(e);
+        end
+        delete(stderrfile);
+    end
 else
     error('OS not supported');
 end
 %--------------------------------------------------------------------------
 fprintf('Conversion took %3.0f min...\n', toc/60);
+
+% Stop on failure
+if exitCode ~= 0
+    error('Conversion failed (exit code %d)', exitCode);
+end
 %--------------------------------------------------------------------------
 % read bininfo.txt
 bininfopath = fullfile(ops.root, 'ks_sorted', 'bininfo.txt');
