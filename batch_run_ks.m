@@ -83,9 +83,19 @@ for iexp = 1:numel(rootpaths)
     end
 
     %----------------------------------------------------------------------
+    if ispc
+        % Windows
+        temppath = 'G:';
+    elseif isunix
+        % Linux
+        temppath = '/mnt/nvme';
+    else
+        error('OS not supported');
+    end
+    %----------------------------------------------------------------------
     metadata.bininfo = bininfo;
     metadata.binpath = binpath;
-    metadata.whpath = fullfile('G:\DATA_sorted', 'temp_wh.dat');
+    metadata.whpath = fullfile(temppath, 'DATA_sorted', 'temp_wh.dat');
     %----------------------------------------------------------------------
     % get options and make channel map
     ops = getKsOptionsMEA(metadata);
