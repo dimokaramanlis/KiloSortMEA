@@ -37,7 +37,7 @@ switch metadata.meatype
         ops.NchanTOT            = 252;
      case '252MEA3008'
         meaChannelMap([16 16], 30,  fullfile(ops.root, 'ks_sorted'), 1);
-        ops.nfilt_factor        = 7;
+        ops.nfilt_factor        = 8;
         ops.NchanTOT            = 252;
     case '252MEA20030'
         meaChannelMap([16 16], 200,  fullfile(ops.root, 'ks_sorted'), 1);
