@@ -7,9 +7,8 @@ addpath(genpath(KilosortPath)); addpath(genpath(NpyMatlabPath));
 temppath = 'C:\';
 %================================================================
 [targetfolders, namestoread] = recordingPaths('AM090_AM097');
-for itargetfile = 1:numel(targetfolders)
+for itargetfile = numel(targetfolders):-1:1
 
-    
     %----------------------------------------------------------------------
     %metadata.root = 'E:\97_FullSession_20230816';
     metadata.root = targetfolders{itargetfile};
@@ -26,9 +25,9 @@ for itargetfile = 1:numel(targetfolders)
     %----------------------------------------------------------------------
     binname = 'alldata.dat';
     binpath = fullfile(kssortedpath, binname);
-    
-    samplelist = concatenateAndCleanBinaries(dpall, binpath);
-    %%
+    if ~exist(binpath, 'file')
+        samplelist = concatenateAndCleanBinaries(dpall, binpath);
+    end
     %----------------------------------------------------------------------
     bininfopath = fullfile(kssortedpath,'samplelist.mat');
     ifile = load(bininfopath); 

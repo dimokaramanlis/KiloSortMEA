@@ -23,7 +23,7 @@ for ifile = 1:numel(dpfile)
     fid = fopen(dpfile{ifile},'r');
     for ibatch = 1:Nbatch %608
         sampsread = min(batchsamples, nTimepoints - (ibatch-1)*batchsamples);
-        fseek(fid, (ibatch-1)*batchsamples*NchanTOT, 'bof'); % fseek to batch start in raw file
+        fseek(fid, (ibatch-1)*batchsamples*NchanTOT*2, 'bof'); % fseek to batch start in raw file
         dat = fread(fid, [NchanTOT sampsread], '*int16');
 
         dataRAW = gpuArray(dat(ichuse,:));

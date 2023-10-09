@@ -48,7 +48,7 @@ ops.CAR                 = 1;    % option for doing common average referencing
 ops.filter              = false; % don't filter data if already filtered
 ops.ntbuff              = 64; % samples of symmetrical buffer for whitening and spike detection
 ops.scaleproc           = 200;   % int16 scaling of whitened data
-ops.NT                  = 64*round(600*ops.fs/1e4) + ops.ntbuff;% this is the batch size (try decreasing if out of memory)
+ops.NT                  = 64*round(550*ops.fs/1e4) + ops.ntbuff;% this is the batch size (try decreasing if out of memory)
 % for GPU should be multiple of 32 + ntbuff
 %==========================================================================
 % the following options can improve/deteriorate results.
