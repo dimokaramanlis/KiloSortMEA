@@ -50,8 +50,9 @@ nt0 = size(rez.W,1);
 U = rez.U;
 W = rez.W;
 
-templates = zeros(Nchan, nt0, rez.ops.Nfilt, 'single');
-for iNN = 1:rez.ops.Nfilt
+Nfilt = size(rez.dWU, 3);
+templates = zeros(Nchan, nt0, Nfilt, 'single');
+for iNN = 1:Nfilt
    templates(:,:,iNN) = squeeze(U(:,iNN,:)) * squeeze(W(:,iNN,:))'; 
 end
 templates = permute(templates, [3 2 1]); % now it's nTemplates x nSamples x nChannels

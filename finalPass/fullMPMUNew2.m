@@ -197,8 +197,9 @@ if ops.lowmem, fclose(fidSavefWpc); end
 % sort spikes
 [~, isort]      = sort(st3(:,1), 'ascend');
 rez.st3         = st3(isort,:);
-
 %==========================================================================
+
+
 % sort features
 
 rez.cProj  (irun+1:end, :) = [];
@@ -269,7 +270,28 @@ end
 for n = 1:size(U,2)
     rez.Wraw(:,:,n) = mu(n) * sq(Urot(:,n,:)) * sq(rez.W(:,n,:))';
 end
+%==========================================================================
+% remove clusters with few spikes
+spkcounts = accumarray(rez.st3(:,2), 1, [Nfilt 1], @sum);
+irem      = find(spkcounts<5);
+newst3 = rez.st3;
+newst3(ismembc(rez.st3(:,2), irem),:) = [];
 
+rez.Wraw(:, :, irem)     = [];
+rez.ypos(irem)           = [];
+rez.mu(irem)             = [];
+rez.W(:,irem,:)          = [];
+rez.U(:,irem,:)          = [];
+rez.iNeighPC(:,irem)     = [];
+rez.iNeigh(:,irem)       = [];
+rez.simScore(irem, :)    = [];
+rez.simScore(:, irem)    = [];
+rez.dWU(:, :, irem)      = [];
+
+[~,~, inew] = unique(newst3(:, 2));
+newst3(:, 2)    = inew;
+rez.st3         = newst3;
+%==========================================================================
 if ops.verbose
    fprintf('Time %3.0f min. Sorting is done!\n', toc/60) 
 end
